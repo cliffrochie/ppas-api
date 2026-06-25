@@ -1,0 +1,463 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Procurement;
+
+use App\Models\Office;
+use App\Models\PurchaseRequest;
+use App\Models\Role;
+use App\Models\User;
+use Tests\TestCase;
+
+class PurchaseRequestTest extends TestCase
+{
+    private function procurementOfficer(): User
+    {
+        $role = Role::where('name', 'procurement_officer')->firstOrFail();
+
+        return User::factory()->create(['role_id' => $role->id]);
+    }
+
+    private function requester(?int $officeId = null): User
+    {
+        $role = Role::where('name', 'requester')->firstOrFail();
+        $office = $officeId ?? Office::where('code', 'ORM')->value('id');
+
+        return User::factory()->create([
+            'role_id'   => $role->id,
+            'office_id' => $office,
+        ]);
+    }
+
+    private function budgetOfficer(): User
+    {
+        $role = Role::where('name', 'budget_officer')->firstOrFail();
+
+        return User::factory()->create(['role_id' => $role->id]);
+    }
+
+    private function officeId(): int
+    {
+        return Office::where('code', 'ORM')->value('id');
+    }
+
+    private function createPurchaseRequest(User $requester, array $attributes = []): PurchaseRequest
+    {
+        return PurchaseRequest::create(array_merge([
+            'requester_id'         => $requester->id,
+            'requesting_office_id' => $this->officeId(),
+            'purpose'              => 'Test procurement purpose',
+            'status'               => 'draft',
+        ], $attributes));
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/v1/purchase-requests — index
+    // -------------------------------------------------------------------------
+
+    public function test_index_returns_401_when_unauthenticated(): void
+    {
+        $this->getJson('/api/v1/purchase-requests')
+            ->assertStatus(401);
+    }
+
+    public function test_index_returns_paginated_purchase_requests(): void
+    {
+        $requester = $this->requester();
+
+        $this->actingAs($requester, 'sanctum')
+            ->getJson('/api/v1/purchase-requests')
+            ->assertStatus(200)
+            ->assertJsonStructure([
+                'data',
+                'meta' => ['current_page', 'last_page', 'per_page', 'total'],
+                'message',
+                'errors',
+            ])
+            ->assertJsonPath('errors', null);
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/v1/purchase-requests — store
+    // -------------------------------------------------------------------------
+
+    public function test_store_creates_purchase_request_as_requester(): void
+    {
+        $requester = $this->requester();
+        $officeId = $this->officeId();
+
+        $this->actingAs($requester, 'sanctum')
+            ->postJson('/api/v1/purchase-requests', [
+                'requester_id'         => $requester->id,
+                'requesting_office_id' => $officeId,
+                'purpose'              => 'Purchase office supplies',
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('data.purpose', 'Purchase office supplies')
+            ->assertJsonPath('errors', null);
+    }
+
+    public function test_store_creates_purchase_request_as_procurement_officer(): void
+    {
+        $officer = $this->procurementOfficer();
+        $requester = $this->requester();
+        $officeId = $this->officeId();
+
+        $this->actingAs($officer, 'sanctum')
+            ->postJson('/api/v1/purchase-requests', [
+                'requester_id'         => $requester->id,
+                'requesting_office_id' => $officeId,
+                'purpose'              => 'Procurement officer submission',
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('errors', null);
+    }
+
+    public function test_store_returns_422_when_required_fields_are_missing(): void
+    {
+        $requester = $this->requester();
+
+        $this->actingAs($requester, 'sanctum')
+            ->postJson('/api/v1/purchase-requests', [])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonStructure(['errors' => ['requester_id', 'requesting_office_id', 'purpose']]);
+    }
+
+    public function test_store_never_accepts_pr_number_from_input(): void
+    {
+        $requester = $this->requester();
+        $officeId = $this->officeId();
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->postJson('/api/v1/purchase-requests', [
+                'requester_id'         => $requester->id,
+                'requesting_office_id' => $officeId,
+                'purpose'              => 'Test',
+                'pr_number'            => 'HACKED-PR-001', // must be ignored
+            ]);
+
+        $response->assertStatus(201);
+        // pr_number is system-generated; user-supplied value must not be set
+        $this->assertNull(PurchaseRequest::latest()->first()->pr_number);
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/v1/purchase-requests/{purchase_request} — show
+    // -------------------------------------------------------------------------
+
+    public function test_show_returns_purchase_request_to_owner(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester);
+
+        $this->actingAs($requester, 'sanctum')
+            ->getJson("/api/v1/purchase-requests/{$pr->id}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $pr->id)
+            ->assertJsonPath('errors', null);
+    }
+
+    public function test_show_returns_403_when_requester_views_another_users_pr(): void
+    {
+        $owner = $this->requester();
+        $other = $this->requester();
+        $pr = $this->createPurchaseRequest($owner);
+
+        $this->actingAs($other, 'sanctum')
+            ->getJson("/api/v1/purchase-requests/{$pr->id}")
+            ->assertStatus(403);
+    }
+
+    public function test_show_returns_404_for_missing_purchase_request(): void
+    {
+        $user = $this->requester();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/purchase-requests/999999')
+            ->assertStatus(404);
+    }
+
+    public function test_show_allows_procurement_officer_to_view_any_pr(): void
+    {
+        $officer = $this->procurementOfficer();
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester);
+
+        $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/purchase-requests/{$pr->id}")
+            ->assertStatus(200);
+    }
+
+    // -------------------------------------------------------------------------
+    // PUT /api/v1/purchase-requests/{purchase_request} — update
+    // -------------------------------------------------------------------------
+
+    public function test_update_succeeds_for_owner_on_draft(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'purpose' => 'Updated purpose',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.purpose', 'Updated purpose');
+    }
+
+    public function test_update_returns_403_when_requester_updates_submitted_pr(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'submitted']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'purpose' => 'Attempted change after submit',
+            ])
+            ->assertStatus(403);
+    }
+
+    // -------------------------------------------------------------------------
+    // DELETE /api/v1/purchase-requests/{purchase_request} — destroy
+    // -------------------------------------------------------------------------
+
+    public function test_destroy_succeeds_for_owner_on_draft_pr(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->deleteJson("/api/v1/purchase-requests/{$pr->id}")
+            ->assertStatus(200)
+            ->assertJsonPath('data', null);
+    }
+
+    public function test_destroy_returns_403_for_non_owner_requester(): void
+    {
+        $owner = $this->requester();
+        $other = $this->requester();
+        $pr = $this->createPurchaseRequest($owner, ['status' => 'draft']);
+
+        $this->actingAs($other, 'sanctum')
+            ->deleteJson("/api/v1/purchase-requests/{$pr->id}")
+            ->assertStatus(403);
+    }
+
+    public function test_destroy_succeeds_for_procurement_officer(): void
+    {
+        $officer = $this->procurementOfficer();
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'completed']);
+
+        $this->actingAs($officer, 'sanctum')
+            ->deleteJson("/api/v1/purchase-requests/{$pr->id}")
+            ->assertStatus(200);
+    }
+
+    // -------------------------------------------------------------------------
+    // Auto-generated fields
+    // -------------------------------------------------------------------------
+
+    public function test_rf_number_is_auto_generated_on_store(): void
+    {
+        $requester = $this->requester();
+        $officeId = $this->officeId();
+        $year = now()->year;
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->postJson('/api/v1/purchase-requests', [
+                'requester_id'         => $requester->id,
+                'requesting_office_id' => $officeId,
+                'purpose'              => 'Test RF number generation',
+            ]);
+
+        $response->assertStatus(201);
+        $this->assertSame("RF-{$year}-00001", $response->json('data.rf_number'));
+    }
+
+    public function test_pr_number_is_auto_generated_on_submit(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+        $year = now()->year;
+
+        // PR number must be null before submission.
+        $this->assertNull($pr->pr_number);
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame("PR-{$year}-00001", $response->json('data.pr_number'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Status transition guard
+    // -------------------------------------------------------------------------
+
+    public function test_invalid_status_transition_returns_422(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer, ['status' => 'draft']);
+
+        // draft → completed is not a valid transition.
+        $this->actingAs($officer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'completed',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('data', null)
+            ->assertJsonPath('errors', null)
+            ->assertJsonFragment(['message' => "Invalid status transition from 'draft' to 'completed'."]);
+    }
+
+    public function test_valid_status_transition_succeeds(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        // draft → submitted is the first valid transition for a requester.
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'submitted');
+    }
+
+    public function test_wrong_role_cannot_transition_status(): void
+    {
+        // The requester owns the PR and it is in 'submitted' status.
+        // The requester cannot move submitted → under_review — only procurement_officer can.
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'submitted']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'under_review',
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_submitted_at_is_set_on_submit(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $this->assertNull($pr->submitted_at);
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertNotNull($response->json('data.submitted_at'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Audit logging
+    // -------------------------------------------------------------------------
+
+    public function test_audit_log_created_on_store(): void
+    {
+        $requester = $this->requester();
+        $officeId = $this->officeId();
+
+        $this->actingAs($requester, 'sanctum')
+            ->postJson('/api/v1/purchase-requests', [
+                'requester_id'         => $requester->id,
+                'requesting_office_id' => $officeId,
+                'purpose'              => 'Audit creation test',
+            ])
+            ->assertStatus(201);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_type' => PurchaseRequest::class,
+            'event'          => 'created',
+        ]);
+    }
+
+    public function test_audit_log_written_on_field_change(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['purpose' => 'Original purpose']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'purpose' => 'Updated purpose',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_type' => PurchaseRequest::class,
+            'auditable_id'   => $pr->id,
+            'event'          => 'updated',
+            'field'          => 'purpose',
+            'old_value'      => 'Original purpose',
+            'new_value'      => 'Updated purpose',
+        ]);
+    }
+
+    public function test_status_change_audit_uses_status_changed_event(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_type' => PurchaseRequest::class,
+            'auditable_id'   => $pr->id,
+            'event'          => 'status_changed',
+            'field'          => 'status',
+            'old_value'      => 'draft',
+            'new_value'      => 'submitted',
+        ]);
+    }
+
+    public function test_audit_log_written_on_destroy(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $prId = $pr->id;
+
+        $this->actingAs($officer, 'sanctum')
+            ->deleteJson("/api/v1/purchase-requests/{$prId}")
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_type' => PurchaseRequest::class,
+            'auditable_id'   => $prId,
+            'event'          => 'deleted',
+            'field'          => 'id',
+            'old_value'      => (string) $prId,
+            'new_value'      => null,
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Response envelope integrity
+    // -------------------------------------------------------------------------
+
+    public function test_pr_resource_never_exposes_internal_file_paths(): void
+    {
+        $requester = $this->requester();
+        $pr = $this->createPurchaseRequest($requester);
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->getJson("/api/v1/purchase-requests/{$pr->id}");
+
+        $data = $response->json('data');
+        // file_path must never be returned from PR resource
+        $this->assertArrayNotHasKey('file_path', $data);
+    }
+}

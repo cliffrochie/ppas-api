@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Policies;
+
+use App\Models\PurchaseOrder;
+use App\Models\User;
+
+final class PurchaseOrderPolicy
+{
+    /**
+     * procurement_officer manages purchase orders.
+     * requester and budget_officer may view.
+     */
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
+
+    public function view(User $user, PurchaseOrder $purchaseOrder): bool
+    {
+        return true;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->role?->name === 'procurement_officer';
+    }
+
+    public function update(User $user, PurchaseOrder $purchaseOrder): bool
+    {
+        return $user->role?->name === 'procurement_officer';
+    }
+
+    public function delete(User $user, PurchaseOrder $purchaseOrder): bool
+    {
+        return $user->role?->name === 'procurement_officer';
+    }
+}

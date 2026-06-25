@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\RFQ;
+
+use App\Models\Rfq;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class StoreRfqRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('create', Rfq::class);
+    }
+
+    public function rules(): array
+    {
+        return [
+            // rfq_number is system-generated — never accepted from input
+            'purchase_request_id' => ['required', 'exists:purchase_requests,id', 'unique:rfqs,purchase_request_id'],
+            'prepared_by_id'      => ['required', 'exists:users,id'],
+            'deadline'            => ['nullable', 'date'],
+            'status'              => ['sometimes', 'in:draft,for_signature,signed,canvassing,closed'],
+            'file_path'           => ['nullable', 'string', 'max:500'],
+        ];
+    }
+}

@@ -1,0 +1,3 @@
+- [PPAS Architecture](project-ppas-architecture.md) — Domain grouping, read-only models, auto-generated fields, file path rules, API versioning, test DB setup
+- [PPAS Models](project-ppas-models.md) — Model-to-table map, relationships, enum values, column constraints
+- [PPAS Policies](project-ppas-policies.md) — Role-based permission matrix, policy wiring pattern, all 19 policies
