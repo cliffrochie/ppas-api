@@ -48,9 +48,17 @@ final class RfqService
 
     private function generateRfqNumber(): string
     {
-        $year  = now()->format('Y');
-        $count = Rfq::whereYear('created_at', $year)->count() + 1;
+        // Must be called inside a DB::transaction — lockForUpdate() is a no-op
+        // outside a transaction and would produce duplicates under concurrency.
+        $year = now()->year;
 
-        return sprintf('RFQ-%s-%04d', $year, $count);
+        $last = Rfq::whereYear('created_at', $year)
+            ->whereNotNull('rfq_number')
+            ->lockForUpdate()
+            ->max('rfq_number');
+
+        $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
+
+        return sprintf('RFQ-%d-%05d', $year, $next);
     }
 }

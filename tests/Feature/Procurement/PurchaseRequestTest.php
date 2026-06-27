@@ -260,35 +260,88 @@ class PurchaseRequestTest extends TestCase
     // Auto-generated fields
     // -------------------------------------------------------------------------
 
-    public function test_rf_number_is_auto_generated_on_store(): void
+    public function test_rf_number_is_null_on_store(): void
     {
+        // rf_number must NOT be generated at draft creation — only at draft → submitted.
         $requester = $this->requester();
-        $officeId = $this->officeId();
-        $year = now()->year;
+        $officeId  = $this->officeId();
 
         $response = $this->actingAs($requester, 'sanctum')
             ->postJson('/api/v1/purchase-requests', [
                 'requester_id'         => $requester->id,
                 'requesting_office_id' => $officeId,
-                'purpose'              => 'Test RF number generation',
+                'purpose'              => 'Test RF number is null on store',
             ]);
 
         $response->assertStatus(201);
-        $this->assertSame("RF-{$year}-00001", $response->json('data.rf_number'));
+        $this->assertNull($response->json('data.rf_number'));
     }
 
-    public function test_pr_number_is_auto_generated_on_submit(): void
+    public function test_rf_number_is_auto_generated_on_submit(): void
     {
+        // rf_number is generated when the Requester transitions draft → submitted.
         $requester = $this->requester();
-        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
-        $year = now()->year;
+        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+        $year      = now()->year;
 
-        // PR number must be null before submission.
-        $this->assertNull($pr->pr_number);
+        $this->assertNull($pr->rf_number);
 
         $response = $this->actingAs($requester, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
                 'status' => 'submitted',
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame("RF-{$year}-00001", $response->json('data.rf_number'));
+    }
+
+    public function test_rf_number_is_preserved_on_resubmission(): void
+    {
+        // When a returned request is resubmitted, the original RF # must be kept.
+        $requester = $this->requester();
+        $year      = now()->year;
+
+        // rf_number is not in #[Fillable] so it cannot be set via create().
+        // Use forceFill after creation to seed the value directly.
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'returned']);
+        $pr->forceFill(['rf_number' => "RF-{$year}-00042"])->save();
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame("RF-{$year}-00042", $response->json('data.rf_number'));
+    }
+
+    public function test_pr_number_is_null_on_submission(): void
+    {
+        // pr_number must NOT be generated at draft → submitted — only at forwarded_to_ppu → pr_prepared.
+        $requester = $this->requester();
+        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertNull($response->json('data.pr_number'));
+    }
+
+    public function test_pr_number_is_auto_generated_on_pr_prepared(): void
+    {
+        // pr_number is generated when PPU transitions forwarded_to_ppu → pr_prepared.
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer, ['status' => 'forwarded_to_ppu']);
+        $year    = now()->year;
+
+        $this->assertNull($pr->pr_number);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'pr_prepared',
             ]);
 
         $response->assertStatus(200);
@@ -357,6 +410,140 @@ class PurchaseRequestTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertNotNull($response->json('data.submitted_at'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Status history (C1 + C3)
+    // -------------------------------------------------------------------------
+
+    public function test_status_history_row_written_on_transition(): void
+    {
+        $requester = $this->requester();
+        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('pr_status_histories', [
+            'purchase_request_id' => $pr->id,
+            'actor_id'            => $requester->id,
+            'from_status'         => 'draft',
+            'to_status'           => 'submitted',
+        ]);
+    }
+
+    public function test_alobs_number_captured_in_status_history_on_budget_approval(): void
+    {
+        $budgetOfficer = $this->budgetOfficer();
+        $pr            = $this->createPurchaseRequest($budgetOfficer, ['status' => 'for_budget_approval']);
+
+        $this->actingAs($budgetOfficer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status'       => 'budget_approved',
+                'alobs_number' => 'ALOBS-2026-001',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('pr_status_histories', [
+            'purchase_request_id' => $pr->id,
+            'from_status'         => 'for_budget_approval',
+            'to_status'           => 'budget_approved',
+            'alobs_number'        => 'ALOBS-2026-001',
+        ]);
+    }
+
+    public function test_remarks_captured_in_status_history_on_return(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer, ['status' => 'submitted']);
+
+        $this->actingAs($officer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status'  => 'returned',
+                'remarks' => 'Missing PPMP attachment.',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('pr_status_histories', [
+            'purchase_request_id' => $pr->id,
+            'from_status'         => 'submitted',
+            'to_status'           => 'returned',
+            'remarks'             => 'Missing PPMP attachment.',
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Notifications (C2)
+    // -------------------------------------------------------------------------
+
+    public function test_notification_created_for_procurement_officer_on_submission(): void
+    {
+        $officer   = $this->procurementOfficer();
+        $requester = $this->requester();
+        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $this->actingAs($requester, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'submitted',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id'             => $officer->id,
+            'purchase_request_id' => $pr->id,
+            'type'                => 'pr_submitted',
+        ]);
+    }
+
+    public function test_notification_created_for_requester_on_return(): void
+    {
+        $officer   = $this->procurementOfficer();
+        $requester = $this->requester();
+        $pr        = $this->createPurchaseRequest($requester, ['status' => 'submitted']);
+
+        $this->actingAs($officer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status'  => 'returned',
+                'remarks' => 'Incomplete submission.',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id'             => $requester->id,
+            'purchase_request_id' => $pr->id,
+            'type'                => 'pr_returned',
+        ]);
+    }
+
+    public function test_actor_does_not_receive_own_notification(): void
+    {
+        // When the requester submits, they should NOT receive a notification
+        // directed at the requester role (they triggered the action themselves).
+        $requester = $this->requester();
+        $pr        = $this->createPurchaseRequest($requester, [
+            'status'    => 'budget_approved',
+            'rf_number' => 'RF-2026-00001',
+        ]);
+
+        // Transition budget_approved → forwarded_to_ppu (budget_officer role).
+        // The actor here is the budget officer; procurement officers get notified.
+        $budgetOfficer = $this->budgetOfficer();
+
+        $this->actingAs($budgetOfficer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'forwarded_to_ppu',
+            ])
+            ->assertStatus(200);
+
+        // budget_officer must NOT appear in notifications for this transition
+        // (they triggered it; the notification goes to procurement_officers).
+        $this->assertDatabaseMissing('notifications', [
+            'user_id'             => $budgetOfficer->id,
+            'purchase_request_id' => $pr->id,
+        ]);
     }
 
     // -------------------------------------------------------------------------

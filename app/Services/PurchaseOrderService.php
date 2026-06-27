@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\PurchaseOrder;
+use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 final class PurchaseOrderService
 {
-    public function list(): LengthAwarePaginator
+    public function list(User $user): LengthAwarePaginator
     {
+        // PO list access is not role-scoped — all authorised roles see the full list.
+        // The User parameter is accepted for consistency with PurchaseRequestService
+        // and to allow role-based scoping to be added here without a signature change.
         return PurchaseOrder::with(['preparedBy', 'purchaseRequest'])
             ->latest()
             ->paginate(15);
@@ -48,9 +52,17 @@ final class PurchaseOrderService
 
     private function generatePoNumber(): string
     {
-        $year  = now()->format('Y');
-        $count = PurchaseOrder::whereYear('created_at', $year)->count() + 1;
+        // Must be called inside a DB::transaction — lockForUpdate() is a no-op
+        // outside a transaction and would produce duplicates under concurrency.
+        $year = now()->year;
 
-        return sprintf('PO-%s-%04d', $year, $count);
+        $last = PurchaseOrder::whereYear('created_at', $year)
+            ->whereNotNull('po_number')
+            ->lockForUpdate()
+            ->max('po_number');
+
+        $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
+
+        return sprintf('PO-%d-%05d', $year, $next);
     }
 }

@@ -22,6 +22,8 @@ use App\Models\PurchaseRequestItem;
 use App\Models\Rfq;
 use App\Models\RfqItem;
 use App\Models\Role;
+use App\Models\Supplier;
+use App\Models\SupplierDocument;
 use App\Models\User;
 use App\Policies\AbstractOfQuotationPolicy;
 use App\Policies\AuditLogPolicy;
@@ -41,6 +43,8 @@ use App\Policies\PurchaseRequestPolicy;
 use App\Policies\RfqItemPolicy;
 use App\Policies\RfqPolicy;
 use App\Policies\RolePolicy;
+use App\Policies\SupplierDocumentPolicy;
+use App\Policies\SupplierPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -85,5 +89,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Notification::class, NotificationPolicy::class);
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(LoginLog::class, LoginLogPolicy::class);
+        Gate::policy(Supplier::class, SupplierPolicy::class);
+        Gate::policy(SupplierDocument::class, SupplierDocumentPolicy::class);
     }
 }

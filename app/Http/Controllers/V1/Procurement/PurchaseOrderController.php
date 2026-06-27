@@ -9,20 +9,25 @@ use App\Http\Requests\Procurement\StorePurchaseOrderRequest;
 use App\Http\Requests\Procurement\UpdatePurchaseOrderRequest;
 use App\Http\Resources\PurchaseOrderResource;
 use App\Models\PurchaseOrder;
+use App\Services\PdfService;
 use App\Services\PurchaseOrderService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 final class PurchaseOrderController extends Controller
 {
-    public function __construct(private readonly PurchaseOrderService $service)
-    {
+    public function __construct(
+        private readonly PurchaseOrderService $service,
+        private readonly PdfService $pdfService,
+    ) {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', PurchaseOrder::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->user());
 
         return response()->json([
             'data' => PurchaseOrderResource::collection($paginator->items()),
@@ -83,5 +88,15 @@ final class PurchaseOrderController extends Controller
             'message' => 'Purchase order deleted successfully.',
             'errors' => null,
         ]);
+    }
+
+    /**
+     * Download the official NIA Purchase Order as a PDF.
+     */
+    public function downloadPurchaseOrder(PurchaseOrder $purchaseOrder): Response
+    {
+        $this->authorize('view', $purchaseOrder);
+
+        return $this->pdfService->purchaseOrder($purchaseOrder);
     }
 }

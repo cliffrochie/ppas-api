@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Exceptions\InvalidStatusTransitionException;
 use App\Models\PurchaseRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,11 @@ final class PurchaseRequestService
         'pr_number',
     ];
 
-    public function __construct(private readonly Request $request) {}
+    public function __construct(
+        private readonly Request $request,
+        private readonly PrStatusHistoryService $prStatusHistoryService,
+        private readonly NotificationService $notificationService,
+    ) {}
 
     // -------------------------------------------------------------------------
     // Internal helpers
@@ -87,11 +92,18 @@ final class PurchaseRequestService
     // Public CRUD methods
     // -------------------------------------------------------------------------
 
-    public function list(): LengthAwarePaginator
+    public function list(User $user): LengthAwarePaginator
     {
-        return PurchaseRequest::with(['requester', 'requestingOffice', 'category'])
-            ->latest()
-            ->paginate(15);
+        $query = PurchaseRequest::with(['requester', 'requestingOffice', 'category'])
+            ->latest();
+
+        // Requesters may only see their own submissions.
+        // Procurement officers and budget officers see all records.
+        if ($user->role?->name === 'requester') {
+            $query->where('requester_id', $user->id);
+        }
+
+        return $query->paginate(15);
     }
 
     public function show(PurchaseRequest $purchaseRequest): PurchaseRequest
@@ -102,21 +114,11 @@ final class PurchaseRequestService
     public function store(array $validated): PurchaseRequest
     {
         return DB::transaction(function () use ($validated): PurchaseRequest {
-            $year = now()->year;
-
-            // Lock the highest RF number for this year to prevent concurrent duplicates.
-            $last = PurchaseRequest::whereYear('created_at', $year)
-                ->whereNotNull('rf_number')
-                ->lockForUpdate()
-                ->max('rf_number');
-
-            $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
-            $rfNumber = sprintf('RF-%d-%05d', $year, $next);
-
-            // rf_number is not in fillable — set directly after creation.
+            // rf_number is NOT generated here — it is generated when the Requester
+            // transitions draft → submitted (per schema-v1.md: "auto-generated when
+            // draft is submitted"). Drafts may be abandoned, so assigning an RF #
+            // at creation would waste sequence numbers.
             $purchaseRequest = PurchaseRequest::create($validated);
-            $purchaseRequest->rf_number = $rfNumber;
-            $purchaseRequest->save();
 
             // Audit: one row per non-null audited field that was just created.
             $this->auditCreated($purchaseRequest);
@@ -134,16 +136,41 @@ final class PurchaseRequestService
         }
 
         return DB::transaction(function () use ($purchaseRequest, $validated): PurchaseRequest {
-            // Capture originals before any write so the audit delta is accurate.
+            // Capture state before any write.
+            $fromStatus = $purchaseRequest->status;
+
             $originalValues = collect(self::AUDITED_FIELDS)
                 ->mapWithKeys(fn (string $field) => [$field => $purchaseRequest->getRawOriginal($field)])
                 ->all();
 
+            // ------------------------------------------------------------------
+            // C4 fix — rf_number generated at draft → submitted, not at store().
+            // Guard with rf_number === null so a resubmission (returned → submitted)
+            // keeps its original RF #.
+            // ------------------------------------------------------------------
             if (isset($validated['status']) && $validated['status'] === 'submitted') {
-                // Stamp submitted_at on first submission.
                 $validated['submitted_at'] = now();
 
-                // Generate PR number when transitioning to 'submitted' for the first time.
+                if ($purchaseRequest->rf_number === null) {
+                    $year = now()->year;
+
+                    $last = PurchaseRequest::whereYear('created_at', $year)
+                        ->whereNotNull('rf_number')
+                        ->lockForUpdate()
+                        ->max('rf_number');
+
+                    $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
+                    // rf_number is not in #[Fillable] — forceFill writes it below.
+                    $validated['rf_number'] = sprintf('RF-%d-%05d', $year, $next);
+                }
+            }
+
+            // ------------------------------------------------------------------
+            // C5 fix — pr_number generated at forwarded_to_ppu → pr_prepared,
+            // not at submitted (schema-v1.md: "auto-generated when PPU prepares
+            // the PR document").
+            // ------------------------------------------------------------------
+            if (isset($validated['status']) && $validated['status'] === 'pr_prepared') {
                 if ($purchaseRequest->pr_number === null) {
                     $year = now()->year;
 
@@ -153,17 +180,50 @@ final class PurchaseRequestService
                         ->max('pr_number');
 
                     $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
-                    // pr_number is not in fillable — forceFill writes it alongside validated fields.
+                    // pr_number is not in #[Fillable] — forceFill writes it below.
                     $validated['pr_number'] = sprintf('PR-%d-%05d', $year, $next);
                 }
             }
 
-            // Use forceFill so pr_number (not in #[Fillable]) can be written in one shot.
+            // `remarks` is validated on the request but is not a column on
+            // purchase_requests — it belongs only in pr_status_histories. Strip
+            // it before forceFill to avoid writing a non-existent column.
+            $remarks = $validated['remarks'] ?? null;
+            unset($validated['remarks']);
+
+            // Use forceFill so rf_number / pr_number (not in #[Fillable]) can be
+            // written in one shot alongside the rest of the validated payload.
             $purchaseRequest->forceFill($validated)->save();
             $purchaseRequest->refresh()->load(['requester', 'requestingOffice', 'category']);
 
-            // Audit: log changed fields and the dedicated status_changed event if applicable.
+            // Audit: log changed fields and the dedicated status_changed event.
             $this->auditUpdated($purchaseRequest, $originalValues, $validated);
+
+            // ------------------------------------------------------------------
+            // C1 + C3 fix — write an immutable status history row on every
+            // status transition. alobs_number is captured here so the Budget
+            // Officer's encoding is permanently recorded (C3).
+            // ------------------------------------------------------------------
+            if (isset($validated['status'])) {
+                $toStatus = $validated['status'];
+
+                $this->prStatusHistoryService->record(
+                    purchaseRequestId: $purchaseRequest->id,
+                    actorId: $this->actorId() ?? 0,
+                    fromStatus: $fromStatus,
+                    toStatus: $toStatus,
+                    remarks: $remarks,
+                    alobsNumber: $validated['alobs_number'] ?? null,
+                );
+
+                // C2 fix — trigger in-system notifications for relevant actors.
+                $this->notificationService->notifyStatusChange(
+                    purchaseRequest: $purchaseRequest,
+                    fromStatus: $fromStatus,
+                    toStatus: $toStatus,
+                    actorId: $this->actorId(),
+                );
+            }
 
             return $purchaseRequest;
         });

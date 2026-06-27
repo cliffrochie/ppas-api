@@ -23,6 +23,7 @@ final class PurchaseRequestResource extends JsonResource
             'alobs_number'         => $this->alobs_number,
             'total_amount'         => $this->total_amount,
             'submitted_at'         => $this->submitted_at,
+            'requires_philgeps'    => $this->requires_philgeps,
             'requester'            => new UserResource($this->whenLoaded('requester')),
             'requesting_office'    => new OfficeResource($this->whenLoaded('requestingOffice')),
             'category'             => new CategoryResource($this->whenLoaded('category')),

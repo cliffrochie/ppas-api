@@ -28,7 +28,7 @@ final class UpdatePurchaseOrderRequest extends FormRequest
             'payment_terms'   => ['nullable', 'string'],
             'delivery_date'   => ['nullable', 'date'],
             'total_amount'    => ['nullable', 'numeric', 'min:0'],
-            'status'          => ['sometimes', 'in:draft,for_signature,signed,acknowledged,completed'],
+            'status'          => ['sometimes', 'in:draft,for_signature,supplier_acceptance,delivery_inspection,completed'],
             'signed_po_path'  => ['nullable', 'string', 'max:500'],
         ];
     }

@@ -46,7 +46,10 @@ final class UpdatePurchaseRequestRequest extends FormRequest
             'category_id'          => ['nullable', 'exists:categories,id'],
             'purpose'              => ['sometimes', 'required', 'string'],
             'status'               => ['sometimes', 'in:draft,submitted,under_review,returned,for_budget_approval,disapproved,budget_approved,forwarded_to_ppu,pr_prepared,pr_approved,rfq_prepared,canvassing,abstract_prepared,bac_resolution_noa,po_prepared,completed'],
-            'alobs_number'         => ['nullable', 'string', 'max:100'],
+            // alobs_number is required when the Budget Officer approves (status → budget_approved).
+            'alobs_number'         => ['required_if:status,budget_approved', 'nullable', 'string', 'max:100'],
+            // remarks are required when returning or disapproving so the actor must provide a reason.
+            'remarks'              => ['required_if:status,returned', 'required_if:status,disapproved', 'nullable', 'string'],
             'total_amount'         => ['nullable', 'numeric', 'min:0'],
             'submitted_at'         => ['nullable', 'date'],
         ];

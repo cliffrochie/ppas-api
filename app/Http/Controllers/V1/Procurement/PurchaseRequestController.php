@@ -9,20 +9,25 @@ use App\Http\Requests\Procurement\StorePurchaseRequestRequest;
 use App\Http\Requests\Procurement\UpdatePurchaseRequestRequest;
 use App\Http\Resources\PurchaseRequestResource;
 use App\Models\PurchaseRequest;
+use App\Services\PdfService;
 use App\Services\PurchaseRequestService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 final class PurchaseRequestController extends Controller
 {
-    public function __construct(private readonly PurchaseRequestService $service)
-    {
+    public function __construct(
+        private readonly PurchaseRequestService $service,
+        private readonly PdfService $pdfService,
+    ) {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', PurchaseRequest::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->user());
 
         return response()->json([
             'data' => PurchaseRequestResource::collection($paginator->items()),
@@ -83,5 +88,27 @@ final class PurchaseRequestController extends Controller
             'message' => 'Purchase request deleted successfully.',
             'errors' => null,
         ]);
+    }
+
+    /**
+     * Download the NIA internal Request Form (RF) as a PDF.
+     * Available once the PR has been submitted (rf_number assigned).
+     */
+    public function downloadRequestForm(PurchaseRequest $purchaseRequest): Response
+    {
+        $this->authorize('view', $purchaseRequest);
+
+        return $this->pdfService->requestForm($purchaseRequest);
+    }
+
+    /**
+     * Download the official NIA Purchase Request as a PDF.
+     * Available once the PR has been approved (pr_number assigned).
+     */
+    public function downloadPurchaseRequest(PurchaseRequest $purchaseRequest): Response
+    {
+        $this->authorize('view', $purchaseRequest);
+
+        return $this->pdfService->purchaseRequest($purchaseRequest);
     }
 }

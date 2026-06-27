@@ -20,9 +20,22 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
     'alobs_number',
     'total_amount',
     'submitted_at',
+    'requires_philgeps',
 ])]
 class PurchaseRequest extends Model
 {
+    /**
+     * Automatically compute `requires_philgeps` before every save.
+     * Requests with a total amount of ₱50,000 or more require mandatory PhilGEPS posting
+     * per the system reminders shown on the New Request form.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $purchaseRequest): void {
+            $purchaseRequest->requires_philgeps = ((float) ($purchaseRequest->total_amount ?? 0)) >= 50000.0;
+        });
+    }
+
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
@@ -76,8 +89,9 @@ class PurchaseRequest extends Model
     protected function casts(): array
     {
         return [
-            'total_amount' => 'decimal:2',
-            'submitted_at' => 'datetime',
+            'total_amount'     => 'decimal:2',
+            'submitted_at'     => 'datetime',
+            'requires_philgeps' => 'boolean',
         ];
     }
 }

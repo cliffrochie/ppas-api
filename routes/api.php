@@ -7,6 +7,7 @@ use App\Http\Controllers\V1\Auth\UserController;
 use App\Http\Controllers\V1\Config\CategoryController;
 use App\Http\Controllers\V1\Config\OfficeController;
 use App\Http\Controllers\V1\Config\RoleController;
+use App\Http\Controllers\V1\DashboardController;
 use App\Http\Controllers\V1\Monitoring\AuditLogController;
 use App\Http\Controllers\V1\Monitoring\LoginLogController;
 use App\Http\Controllers\V1\Monitoring\NotificationController;
@@ -16,6 +17,8 @@ use App\Http\Controllers\V1\Procurement\PurchaseOrderController;
 use App\Http\Controllers\V1\Procurement\PurchaseOrderItemController;
 use App\Http\Controllers\V1\Procurement\PurchaseRequestController;
 use App\Http\Controllers\V1\Procurement\PurchaseRequestItemController;
+use App\Http\Controllers\V1\Procurement\SupplierController;
+use App\Http\Controllers\V1\Procurement\SupplierDocumentController;
 use App\Http\Controllers\V1\Resolution\BacResolutionController;
 use App\Http\Controllers\V1\Resolution\NoticeOfAwardController;
 use App\Http\Controllers\V1\RFQ\AbstractOfQuotationController;
@@ -66,6 +69,12 @@ Route::prefix('v1')->group(function (): void {
             ->names('users');
 
         // ---------------------------------------------------------------------
+        // Dashboard — analytics and KPI summary, accessible to all roles
+        // ---------------------------------------------------------------------
+        Route::get('dashboard', [DashboardController::class, 'index'])
+            ->name('dashboard.index');
+
+        // ---------------------------------------------------------------------
         // Procurement domain
         // ---------------------------------------------------------------------
         Route::apiResource('purchase-requests', PurchaseRequestController::class)
@@ -99,11 +108,48 @@ Route::prefix('v1')->group(function (): void {
         Route::get('pr-attachments/{prAttachment}/download', [PrAttachmentController::class, 'download'])
             ->name('pr_attachments.download');
 
+        // PDF document downloads — streamed from the server, require authorization.
+        Route::get('purchase-requests/{purchaseRequest}/download/request-form', [PurchaseRequestController::class, 'downloadRequestForm'])
+            ->name('purchase_requests.download.request_form');
+
+        Route::get('purchase-requests/{purchaseRequest}/download/purchase-request', [PurchaseRequestController::class, 'downloadPurchaseRequest'])
+            ->name('purchase_requests.download.purchase_request');
+
+        Route::get('purchase-orders/{purchaseOrder}/download/purchase-order', [PurchaseOrderController::class, 'downloadPurchaseOrder'])
+            ->name('purchase_orders.download.purchase_order');
+
         // PR status history is read-only (append-only audit log)
         Route::get('pr-status-histories', [PrStatusHistoryController::class, 'index'])
             ->name('pr_status_histories.index');
         Route::get('pr-status-histories/{prStatusHistory}', [PrStatusHistoryController::class, 'show'])
             ->name('pr_status_histories.show');
+
+        Route::apiResource('suppliers', SupplierController::class)
+            ->names([
+                'index'   => 'suppliers.index',
+                'store'   => 'suppliers.store',
+                'show'    => 'suppliers.show',
+                'update'  => 'suppliers.update',
+                'destroy' => 'suppliers.destroy',
+            ]);
+
+        // Secure, authorized supplier logo download — never served from the public disk.
+        Route::get('suppliers/{supplier}/logo', [SupplierController::class, 'downloadLogo'])
+            ->name('suppliers.download_logo');
+
+        // Supplier documents: no update endpoint — delete and re-upload instead.
+        Route::apiResource('supplier-documents', SupplierDocumentController::class)
+            ->except(['update'])
+            ->names([
+                'index'   => 'supplier_documents.index',
+                'store'   => 'supplier_documents.store',
+                'show'    => 'supplier_documents.show',
+                'destroy' => 'supplier_documents.destroy',
+            ]);
+
+        // Secure, authorized supplier document download — never served from the public disk.
+        Route::get('supplier-documents/{supplierDocument}/download', [SupplierDocumentController::class, 'download'])
+            ->name('supplier_documents.download');
 
         Route::apiResource('purchase-orders', PurchaseOrderController::class)
             ->names([
