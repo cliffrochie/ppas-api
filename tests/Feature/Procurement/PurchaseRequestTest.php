@@ -78,6 +78,85 @@ class PurchaseRequestTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_requester_cannot_see_other_users_prs(): void
+    {
+        $owner = $this->requester();
+        $other = $this->requester();
+        $this->createPurchaseRequest($owner, ['status' => 'submitted']);
+
+        $response = $this->actingAs($other, 'sanctum')
+            ->getJson('/api/v1/purchase-requests');
+
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
+    }
+
+    public function test_requester_can_see_own_drafts(): void
+    {
+        $requester = $this->requester();
+        $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $response = $this->actingAs($requester, 'sanctum')
+            ->getJson('/api/v1/purchase-requests');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_officer_does_not_see_draft_prs(): void
+    {
+        $officer   = $this->procurementOfficer();
+        $requester = $this->requester();
+        $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/purchase-requests');
+
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
+    }
+
+    public function test_officer_sees_submitted_prs_from_all_requesters(): void
+    {
+        $officer    = $this->procurementOfficer();
+        $requesterA = $this->requester();
+        $requesterB = $this->requester();
+        $this->createPurchaseRequest($requesterA, ['status' => 'submitted']);
+        $this->createPurchaseRequest($requesterB, ['status' => 'under_review']);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/purchase-requests');
+
+        $response->assertStatus(200);
+        $this->assertCount(2, $response->json('data'));
+    }
+
+    public function test_budget_officer_does_not_see_draft_prs(): void
+    {
+        $budgetOfficer = $this->budgetOfficer();
+        $requester     = $this->requester();
+        $this->createPurchaseRequest($requester, ['status' => 'draft']);
+
+        $response = $this->actingAs($budgetOfficer, 'sanctum')
+            ->getJson('/api/v1/purchase-requests');
+
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
+    }
+
+    public function test_budget_officer_sees_submitted_prs(): void
+    {
+        $budgetOfficer = $this->budgetOfficer();
+        $requester     = $this->requester();
+        $this->createPurchaseRequest($requester, ['status' => 'for_budget_approval']);
+
+        $response = $this->actingAs($budgetOfficer, 'sanctum')
+            ->getJson('/api/v1/purchase-requests');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/purchase-requests — store
     // -------------------------------------------------------------------------

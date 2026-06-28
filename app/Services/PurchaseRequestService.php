@@ -97,10 +97,13 @@ final class PurchaseRequestService
         $query = PurchaseRequest::with(['requester', 'requestingOffice', 'category'])
             ->latest();
 
-        // Requesters may only see their own submissions.
-        // Procurement officers and budget officers see all records.
         if ($user->role?->name === 'requester') {
+            // Requesters see only their own PRs (including drafts).
             $query->where('requester_id', $user->id);
+        } else {
+            // Officers (budget_officer, procurement_officer) see all submitted PRs.
+            // Drafts are private to the requester until submitted.
+            $query->where('status', '!=', 'draft');
         }
 
         return $query->paginate(15);

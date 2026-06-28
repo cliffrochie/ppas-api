@@ -208,4 +208,66 @@ class PurchaseOrderTest extends TestCase
             ->assertStatus(201)
             ->assertJsonPath('data.po_number', "PO-{$year}-00002");
     }
+
+    // -------------------------------------------------------------------------
+    // Status values — must match design stepper
+    // -------------------------------------------------------------------------
+
+    public function test_po_status_can_be_set_to_for_signature(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $po      = $this->createPurchaseOrder($pr, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'for_signature'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'for_signature');
+    }
+
+    public function test_po_status_can_be_set_to_supplier_acceptance(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $po      = $this->createPurchaseOrder($pr, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'supplier_acceptance'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'supplier_acceptance');
+    }
+
+    public function test_po_status_can_be_set_to_delivery_inspection(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $po      = $this->createPurchaseOrder($pr, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'delivery_inspection'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'delivery_inspection');
+    }
+
+    public function test_po_status_rejects_old_signed_value(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $po      = $this->createPurchaseOrder($pr, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'signed'])
+            ->assertStatus(422);
+    }
+
+    public function test_po_status_rejects_old_acknowledged_value(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $po      = $this->createPurchaseOrder($pr, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'acknowledged'])
+            ->assertStatus(422);
+    }
 }
