@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Procurement;
+namespace Tests\Feature\RFQ;
 
 use App\Models\Office;
-use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
+use App\Models\Rfq;
 use App\Models\Role;
 use App\Models\User;
 use Tests\TestCase;
 
-class PurchaseOrderTest extends TestCase
+class RfqTest extends TestCase
 {
     private function procurementOfficer(): User
     {
@@ -27,43 +27,46 @@ class PurchaseOrderTest extends TestCase
 
     private function createPurchaseRequest(User $user): PurchaseRequest
     {
+        static $prSeq = 0;
+        $prSeq++;
+
         return PurchaseRequest::create([
             'requester_id'         => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => 'Test procurement purpose',
+            'purpose'              => "Test PR #{$prSeq}",
             'status'               => 'pr_approved',
         ]);
     }
 
-    private function createPurchaseOrder(PurchaseRequest $pr, User $preparedBy): PurchaseOrder
+    private function createRfq(PurchaseRequest $pr, User $user): Rfq
     {
         static $seq = 0;
         $seq++;
 
-        return PurchaseOrder::create([
+        return Rfq::create([
             'purchase_request_id' => $pr->id,
-            'prepared_by_id'      => $preparedBy->id,
-            'po_number'           => sprintf('PO-%d-%05d', now()->year, $seq),
+            'prepared_by_id'      => $user->id,
+            'rfq_number'          => sprintf('RFQ-%d-%05d', now()->year, $seq),
             'status'              => 'draft',
         ]);
     }
 
     // -------------------------------------------------------------------------
-    // GET /api/v1/purchase-orders — index
+    // GET /api/v1/rfqs — index
     // -------------------------------------------------------------------------
 
     public function test_index_returns_401_when_unauthenticated(): void
     {
-        $this->getJson('/api/v1/purchase-orders')
+        $this->getJson('/api/v1/rfqs')
             ->assertStatus(401);
     }
 
-    public function test_index_returns_paginated_purchase_orders(): void
+    public function test_index_returns_paginated_rfqs(): void
     {
         $officer = $this->procurementOfficer();
 
         $this->actingAs($officer, 'sanctum')
-            ->getJson('/api/v1/purchase-orders')
+            ->getJson('/api/v1/rfqs')
             ->assertStatus(200)
             ->assertJsonStructure([
                 'data',
@@ -75,16 +78,16 @@ class PurchaseOrderTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/v1/purchase-orders — store
+    // POST /api/v1/rfqs — store
     // -------------------------------------------------------------------------
 
-    public function test_store_creates_purchase_order(): void
+    public function test_store_creates_rfq(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
 
         $this->actingAs($officer, 'sanctum')
-            ->postJson('/api/v1/purchase-orders', [
+            ->postJson('/api/v1/rfqs', [
                 'purchase_request_id' => $pr->id,
                 'prepared_by_id'      => $officer->id,
             ])
@@ -97,115 +100,109 @@ class PurchaseOrderTest extends TestCase
         $officer = $this->procurementOfficer();
 
         $this->actingAs($officer, 'sanctum')
-            ->postJson('/api/v1/purchase-orders', [])
+            ->postJson('/api/v1/rfqs', [])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Validation failed.')
             ->assertJsonStructure(['errors' => ['purchase_request_id', 'prepared_by_id']]);
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/v1/purchase-orders/{purchaseOrder} — show
-    // -------------------------------------------------------------------------
-
-    public function test_show_returns_purchase_order(): void
+    public function test_store_returns_422_when_pr_already_has_rfq(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
-            ->getJson("/api/v1/purchase-orders/{$po->id}")
+            ->postJson('/api/v1/rfqs', [
+                'purchase_request_id' => $pr->id,
+                'prepared_by_id'      => $officer->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonStructure(['errors' => ['purchase_request_id']]);
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/v1/rfqs/{rfq} — show
+    // -------------------------------------------------------------------------
+
+    public function test_show_returns_rfq(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $rfq     = $this->createRfq($pr, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/rfqs/{$rfq->id}")
             ->assertStatus(200)
-            ->assertJsonPath('data.id', $po->id)
+            ->assertJsonPath('data.id', $rfq->id)
             ->assertJsonPath('errors', null);
     }
 
-    public function test_show_returns_404_for_missing_purchase_order(): void
+    public function test_show_returns_404_for_missing_rfq(): void
     {
         $officer = $this->procurementOfficer();
 
         $this->actingAs($officer, 'sanctum')
-            ->getJson('/api/v1/purchase-orders/999999')
+            ->getJson('/api/v1/rfqs/999999')
             ->assertStatus(404);
     }
 
     // -------------------------------------------------------------------------
-    // PATCH /api/v1/purchase-orders/{purchaseOrder} — update
+    // PATCH /api/v1/rfqs/{rfq} — update
     // -------------------------------------------------------------------------
 
-    public function test_update_modifies_purchase_order(): void
+    public function test_update_modifies_rfq(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $rfq     = $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
-            ->patchJson("/api/v1/purchase-orders/{$po->id}", [
-                'delivery_terms' => 'Net 30 days',
+            ->patchJson("/api/v1/rfqs/{$rfq->id}", [
+                'status' => 'for_signature',
             ])
             ->assertStatus(200)
-            ->assertJsonPath('data.delivery_terms', 'Net 30 days');
+            ->assertJsonPath('data.status', 'for_signature');
     }
 
     // -------------------------------------------------------------------------
-    // DELETE /api/v1/purchase-orders/{purchaseOrder} — destroy
+    // DELETE /api/v1/rfqs/{rfq} — destroy
     // -------------------------------------------------------------------------
 
-    public function test_destroy_deletes_purchase_order(): void
+    public function test_destroy_deletes_rfq(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $rfq     = $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
-            ->deleteJson("/api/v1/purchase-orders/{$po->id}")
+            ->deleteJson("/api/v1/rfqs/{$rfq->id}")
             ->assertStatus(200)
             ->assertJsonPath('data', null);
 
-        $this->assertDatabaseMissing('purchase_orders', ['id' => $po->id]);
+        $this->assertDatabaseMissing('rfqs', ['id' => $rfq->id]);
     }
 
     // -------------------------------------------------------------------------
-    // Auto-generated po_number
+    // Auto-generated rfq_number
     // -------------------------------------------------------------------------
 
-    public function test_po_number_is_auto_generated_on_create(): void
+    public function test_rfq_number_is_auto_generated_on_create(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
         $year    = now()->year;
 
         $response = $this->actingAs($officer, 'sanctum')
-            ->postJson('/api/v1/purchase-orders', [
+            ->postJson('/api/v1/rfqs', [
                 'purchase_request_id' => $pr->id,
                 'prepared_by_id'      => $officer->id,
             ]);
 
         $response->assertStatus(201);
-        $this->assertSame("PO-{$year}-00001", $response->json('data.po_number'));
-    }
-
-    public function test_po_number_increments_per_year(): void
-    {
-        $officer = $this->procurementOfficer();
-        $pr1     = $this->createPurchaseRequest($officer);
-        $pr2     = $this->createPurchaseRequest($officer);
-        $year    = now()->year;
-
-        $this->actingAs($officer, 'sanctum')
-            ->postJson('/api/v1/purchase-orders', [
-                'purchase_request_id' => $pr1->id,
-                'prepared_by_id'      => $officer->id,
-            ])
-            ->assertStatus(201)
-            ->assertJsonPath('data.po_number', "PO-{$year}-00001");
-
-        $this->actingAs($officer, 'sanctum')
-            ->postJson('/api/v1/purchase-orders', [
-                'purchase_request_id' => $pr2->id,
-                'prepared_by_id'      => $officer->id,
-            ])
-            ->assertStatus(201)
-            ->assertJsonPath('data.po_number', "PO-{$year}-00002");
+        $this->assertMatchesRegularExpression(
+            "/^RFQ-{$year}-\d{5}$/",
+            $response->json('data.rfq_number')
+        );
     }
 }

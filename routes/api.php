@@ -194,6 +194,7 @@ Route::prefix('v1')->group(function (): void {
             ]);
 
         Route::apiResource('abstracts-of-quotation', AbstractOfQuotationController::class)
+            ->parameters(['abstracts-of-quotation' => 'abstract_of_quotation'])
             ->names([
                 'index'   => 'abstracts_of_quotation.index',
                 'store'   => 'abstracts_of_quotation.store',
@@ -215,6 +216,7 @@ Route::prefix('v1')->group(function (): void {
             ]);
 
         Route::apiResource('notices-of-award', NoticeOfAwardController::class)
+            ->parameters(['notices-of-award' => 'notice_of_award'])
             ->names([
                 'index'   => 'notices_of_award.index',
                 'store'   => 'notices_of_award.store',

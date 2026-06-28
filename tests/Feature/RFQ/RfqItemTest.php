@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Procurement;
+namespace Tests\Feature\RFQ;
 
 use App\Models\Office;
-use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestItem;
+use App\Models\Rfq;
+use App\Models\RfqItem;
 use App\Models\Role;
 use App\Models\User;
 use Tests\TestCase;
 
-class PurchaseOrderItemTest extends TestCase
+class RfqItemTest extends TestCase
 {
     private function procurementOfficer(): User
     {
@@ -28,55 +29,69 @@ class PurchaseOrderItemTest extends TestCase
 
     private function createPurchaseRequest(User $user): PurchaseRequest
     {
+        static $seq = 0;
+        $seq++;
+
         return PurchaseRequest::create([
             'requester_id'         => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => 'Test procurement purpose',
+            'purpose'              => "Test PR #{$seq}",
             'status'               => 'pr_approved',
         ]);
     }
 
-    private function createPurchaseOrder(PurchaseRequest $pr, User $user): PurchaseOrder
+    private function createRfq(PurchaseRequest $pr, User $user): Rfq
     {
         static $seq = 0;
         $seq++;
 
-        return PurchaseOrder::create([
+        return Rfq::create([
             'purchase_request_id' => $pr->id,
             'prepared_by_id'      => $user->id,
-            'po_number'           => sprintf('PO-%d-%05d', now()->year, $seq),
+            'rfq_number'          => sprintf('RFQ-%d-%05d', now()->year, $seq),
             'status'              => 'draft',
         ]);
     }
 
-    private function createPurchaseOrderItem(PurchaseOrder $po): PurchaseOrderItem
+    private function createPrItem(PurchaseRequest $pr): PurchaseRequestItem
     {
-        return PurchaseOrderItem::create([
-            'purchase_order_id' => $po->id,
-            'item_description'  => 'Bond Paper A4',
-            'unit_of_measure'   => 'ream',
-            'quantity'          => 5,
-            'unit_cost'         => 200.00,
-            'total_cost'        => 1000.00,
+        return PurchaseRequestItem::create([
+            'purchase_request_id' => $pr->id,
+            'item_description'    => 'Bond Paper A4',
+            'unit_of_measure'     => 'ream',
+            'quantity'            => 10,
+            'unit_cost'           => 200.00,
+            'total_cost'          => 2000.00,
+        ]);
+    }
+
+    private function createRfqItem(Rfq $rfq, PurchaseRequestItem $prItem): RfqItem
+    {
+        return RfqItem::create([
+            'rfq_id'           => $rfq->id,
+            'pr_item_id'       => $prItem->id,
+            'item_description' => 'Bond Paper A4',
+            'unit_of_measure'  => 'ream',
+            'quantity'         => 10,
         ]);
     }
 
     // -------------------------------------------------------------------------
-    // GET /api/v1/purchase-order-items — index
+    // GET /api/v1/rfq-items — index
     // -------------------------------------------------------------------------
 
     public function test_index_returns_401_when_unauthenticated(): void
     {
-        $this->getJson('/api/v1/purchase-order-items')
+        $this->getJson('/api/v1/rfq-items')
             ->assertStatus(401);
     }
 
-    public function test_index_returns_paginated_purchase_order_items(): void
+    public function test_index_returns_paginated_rfq_items(): void
     {
         $officer = $this->procurementOfficer();
 
         $this->actingAs($officer, 'sanctum')
-            ->getJson('/api/v1/purchase-order-items')
+            ->getJson('/api/v1/rfq-items')
             ->assertStatus(200)
             ->assertJsonStructure([
                 'data',
@@ -88,23 +103,23 @@ class PurchaseOrderItemTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/v1/purchase-order-items — store
+    // POST /api/v1/rfq-items — store
     // -------------------------------------------------------------------------
 
-    public function test_store_creates_purchase_order_item(): void
+    public function test_store_creates_rfq_item(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $rfq     = $this->createRfq($pr, $officer);
+        $prItem  = $this->createPrItem($pr);
 
         $this->actingAs($officer, 'sanctum')
-            ->postJson('/api/v1/purchase-order-items', [
-                'purchase_order_id' => $po->id,
-                'item_description'  => 'Bond Paper A4',
-                'unit_of_measure'   => 'ream',
-                'quantity'          => 10,
-                'unit_cost'         => 250.00,
-                'total_cost'        => 2500.00,
+            ->postJson('/api/v1/rfq-items', [
+                'rfq_id'           => $rfq->id,
+                'pr_item_id'       => $prItem->id,
+                'item_description' => 'Bond Paper A4',
+                'unit_of_measure'  => 'ream',
+                'quantity'         => 5,
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.item_description', 'Bond Paper A4')
@@ -116,25 +131,26 @@ class PurchaseOrderItemTest extends TestCase
         $officer = $this->procurementOfficer();
 
         $this->actingAs($officer, 'sanctum')
-            ->postJson('/api/v1/purchase-order-items', [])
+            ->postJson('/api/v1/rfq-items', [])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Validation failed.')
-            ->assertJsonStructure(['errors' => ['purchase_order_id', 'item_description', 'unit_of_measure', 'quantity', 'unit_cost', 'total_cost']]);
+            ->assertJsonStructure(['errors' => ['rfq_id', 'pr_item_id', 'item_description', 'unit_of_measure', 'quantity']]);
     }
 
     // -------------------------------------------------------------------------
-    // GET /api/v1/purchase-order-items/{purchaseOrderItem} — show
+    // GET /api/v1/rfq-items/{rfqItem} — show
     // -------------------------------------------------------------------------
 
-    public function test_show_returns_purchase_order_item(): void
+    public function test_show_returns_rfq_item(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
-        $item    = $this->createPurchaseOrderItem($po);
+        $rfq     = $this->createRfq($pr, $officer);
+        $prItem  = $this->createPrItem($pr);
+        $item    = $this->createRfqItem($rfq, $prItem);
 
         $this->actingAs($officer, 'sanctum')
-            ->getJson("/api/v1/purchase-order-items/{$item->id}")
+            ->getJson("/api/v1/rfq-items/{$item->id}")
             ->assertStatus(200)
             ->assertJsonPath('data.id', $item->id)
             ->assertJsonPath('errors', null);
@@ -145,45 +161,47 @@ class PurchaseOrderItemTest extends TestCase
         $officer = $this->procurementOfficer();
 
         $this->actingAs($officer, 'sanctum')
-            ->getJson('/api/v1/purchase-order-items/999999')
+            ->getJson('/api/v1/rfq-items/999999')
             ->assertStatus(404);
     }
 
     // -------------------------------------------------------------------------
-    // PATCH /api/v1/purchase-order-items/{purchaseOrderItem} — update
+    // PATCH /api/v1/rfq-items/{rfqItem} — update
     // -------------------------------------------------------------------------
 
-    public function test_update_modifies_purchase_order_item(): void
+    public function test_update_modifies_rfq_item(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
-        $item    = $this->createPurchaseOrderItem($po);
+        $rfq     = $this->createRfq($pr, $officer);
+        $prItem  = $this->createPrItem($pr);
+        $item    = $this->createRfqItem($rfq, $prItem);
 
         $this->actingAs($officer, 'sanctum')
-            ->patchJson("/api/v1/purchase-order-items/{$item->id}", [
-                'item_description' => 'Updated Description',
+            ->patchJson("/api/v1/rfq-items/{$item->id}", [
+                'item_description' => 'Updated Item',
             ])
             ->assertStatus(200)
-            ->assertJsonPath('data.item_description', 'Updated Description');
+            ->assertJsonPath('data.item_description', 'Updated Item');
     }
 
     // -------------------------------------------------------------------------
-    // DELETE /api/v1/purchase-order-items/{purchaseOrderItem} — destroy
+    // DELETE /api/v1/rfq-items/{rfqItem} — destroy
     // -------------------------------------------------------------------------
 
-    public function test_destroy_deletes_purchase_order_item(): void
+    public function test_destroy_deletes_rfq_item(): void
     {
         $officer = $this->procurementOfficer();
         $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
-        $item    = $this->createPurchaseOrderItem($po);
+        $rfq     = $this->createRfq($pr, $officer);
+        $prItem  = $this->createPrItem($pr);
+        $item    = $this->createRfqItem($rfq, $prItem);
 
         $this->actingAs($officer, 'sanctum')
-            ->deleteJson("/api/v1/purchase-order-items/{$item->id}")
+            ->deleteJson("/api/v1/rfq-items/{$item->id}")
             ->assertStatus(200)
             ->assertJsonPath('data', null);
 
-        $this->assertDatabaseMissing('purchase_order_items', ['id' => $item->id]);
+        $this->assertDatabaseMissing('rfq_items', ['id' => $item->id]);
     }
 }

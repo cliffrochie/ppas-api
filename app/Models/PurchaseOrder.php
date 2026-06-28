@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'purchase_request_id',
     'prepared_by_id',
     'supplier_id',
+    'po_number',
     'supplier_name',
     'supplier_address',
     'delivery_terms',

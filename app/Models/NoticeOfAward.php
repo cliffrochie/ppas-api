@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class NoticeOfAward extends Model
 {
+    protected $table = 'notices_of_award';
+
     public function bacResolution(): BelongsTo
     {
         return $this->belongsTo(BacResolution::class);

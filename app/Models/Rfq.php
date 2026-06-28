@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'purchase_request_id',
     'prepared_by_id',
+    'rfq_number',
     'deadline',
     'status',
     'file_path',
