@@ -18,22 +18,22 @@ final class PurchaseRequestService
      * An empty array means the status is terminal — no further transitions allowed.
      */
     private const ALLOWED_TRANSITIONS = [
-        'draft'               => ['submitted'],
-        'submitted'           => ['under_review', 'returned'],
-        'under_review'        => ['for_budget_approval', 'returned'],
-        'returned'            => ['submitted'],
+        'draft' => ['submitted'],
+        'submitted' => ['under_review', 'returned'],
+        'under_review' => ['for_budget_approval', 'returned'],
+        'returned' => ['submitted'],
         'for_budget_approval' => ['budget_approved', 'disapproved'],
-        'disapproved'         => [],
-        'budget_approved'     => ['forwarded_to_ppu'],
-        'forwarded_to_ppu'    => ['pr_prepared'],
-        'pr_prepared'         => ['pr_approved'],
-        'pr_approved'         => ['rfq_prepared'],
-        'rfq_prepared'        => ['canvassing'],
-        'canvassing'          => ['abstract_prepared'],
-        'abstract_prepared'   => ['bac_resolution_noa'],
-        'bac_resolution_noa'  => ['po_prepared'],
-        'po_prepared'         => ['completed'],
-        'completed'           => [],
+        'disapproved' => [],
+        'budget_approved' => ['forwarded_to_ppu'],
+        'forwarded_to_ppu' => ['pr_prepared'],
+        'pr_prepared' => ['pr_approved'],
+        'pr_approved' => ['rfq_prepared'],
+        'rfq_prepared' => ['canvassing'],
+        'canvassing' => ['abstract_prepared'],
+        'abstract_prepared' => ['bac_resolution_noa'],
+        'bac_resolution_noa' => ['po_prepared'],
+        'po_prepared' => ['completed'],
+        'completed' => [],
     ];
 
     /**
@@ -56,7 +56,8 @@ final class PurchaseRequestService
         private readonly Request $request,
         private readonly PrStatusHistoryService $prStatusHistoryService,
         private readonly NotificationService $notificationService,
-    ) {}
+    ) {
+    }
 
     // -------------------------------------------------------------------------
     // Internal helpers
@@ -71,7 +72,7 @@ final class PurchaseRequestService
     {
         $allowed = self::ALLOWED_TRANSITIONS[$current] ?? [];
 
-        if (! in_array($next, $allowed, true)) {
+        if (!in_array($next, $allowed, true)) {
             throw new InvalidStatusTransitionException($current, $next);
         }
     }
@@ -143,7 +144,7 @@ final class PurchaseRequestService
             $fromStatus = $purchaseRequest->status;
 
             $originalValues = collect(self::AUDITED_FIELDS)
-                ->mapWithKeys(fn (string $field) => [$field => $purchaseRequest->getRawOriginal($field)])
+                ->mapWithKeys(fn(string $field) => [$field => $purchaseRequest->getRawOriginal($field)])
                 ->all();
 
             // ------------------------------------------------------------------
@@ -317,7 +318,7 @@ final class PurchaseRequestService
             }
         }
 
-        if (! empty($updatedChanges)) {
+        if (!empty($updatedChanges)) {
             AuditLogger::logMany(
                 auditable: $purchaseRequest,
                 event: 'updated',

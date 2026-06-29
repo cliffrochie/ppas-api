@@ -43,7 +43,8 @@ final class RfqService
 
     public function destroy(Rfq $rfq): void
     {
-        DB::transaction(function () use ($rfq): void { $rfq->delete(); });
+        DB::transaction(function () use ($rfq): void {
+            $rfq->delete(); });
     }
 
     private function generateRfqNumber(): string

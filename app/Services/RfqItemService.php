@@ -17,7 +17,7 @@ final class RfqItemService
 
     public function store(array $validated): RfqItem
     {
-        return DB::transaction(fn (): RfqItem => RfqItem::create($validated));
+        return DB::transaction(fn(): RfqItem => RfqItem::create($validated));
     }
 
     public function update(RfqItem $item, array $validated): RfqItem
@@ -31,6 +31,7 @@ final class RfqItemService
 
     public function destroy(RfqItem $item): void
     {
-        DB::transaction(function () use ($item): void { $item->delete(); });
+        DB::transaction(function () use ($item): void {
+            $item->delete(); });
     }
 }
