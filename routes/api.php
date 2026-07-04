@@ -38,6 +38,10 @@ Route::prefix('v1')->group(function (): void {
             ->middleware('throttle:10,1')
             ->name('login');
 
+        Route::post('register', [AuthController::class, 'register'])
+            ->middleware('throttle:10,1')
+            ->name('register');
+
         Route::middleware('auth:sanctum')->group(function (): void {
             Route::post('logout', [AuthController::class, 'logout'])->name('logout');
             Route::get('me', [AuthController::class, 'me'])->name('me');
@@ -79,28 +83,28 @@ Route::prefix('v1')->group(function (): void {
         // ---------------------------------------------------------------------
         Route::apiResource('purchase-requests', PurchaseRequestController::class)
             ->names([
-                'index'   => 'purchase_requests.index',
-                'store'   => 'purchase_requests.store',
-                'show'    => 'purchase_requests.show',
-                'update'  => 'purchase_requests.update',
+                'index' => 'purchase_requests.index',
+                'store' => 'purchase_requests.store',
+                'show' => 'purchase_requests.show',
+                'update' => 'purchase_requests.update',
                 'destroy' => 'purchase_requests.destroy',
             ]);
 
         Route::apiResource('purchase-request-items', PurchaseRequestItemController::class)
             ->names([
-                'index'   => 'purchase_request_items.index',
-                'store'   => 'purchase_request_items.store',
-                'show'    => 'purchase_request_items.show',
-                'update'  => 'purchase_request_items.update',
+                'index' => 'purchase_request_items.index',
+                'store' => 'purchase_request_items.store',
+                'show' => 'purchase_request_items.show',
+                'update' => 'purchase_request_items.update',
                 'destroy' => 'purchase_request_items.destroy',
             ]);
 
         Route::apiResource('pr-attachments', PrAttachmentController::class)
             ->names([
-                'index'   => 'pr_attachments.index',
-                'store'   => 'pr_attachments.store',
-                'show'    => 'pr_attachments.show',
-                'update'  => 'pr_attachments.update',
+                'index' => 'pr_attachments.index',
+                'store' => 'pr_attachments.store',
+                'show' => 'pr_attachments.show',
+                'update' => 'pr_attachments.update',
                 'destroy' => 'pr_attachments.destroy',
             ]);
 
@@ -126,10 +130,10 @@ Route::prefix('v1')->group(function (): void {
 
         Route::apiResource('suppliers', SupplierController::class)
             ->names([
-                'index'   => 'suppliers.index',
-                'store'   => 'suppliers.store',
-                'show'    => 'suppliers.show',
-                'update'  => 'suppliers.update',
+                'index' => 'suppliers.index',
+                'store' => 'suppliers.store',
+                'show' => 'suppliers.show',
+                'update' => 'suppliers.update',
                 'destroy' => 'suppliers.destroy',
             ]);
 
@@ -141,9 +145,9 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('supplier-documents', SupplierDocumentController::class)
             ->except(['update'])
             ->names([
-                'index'   => 'supplier_documents.index',
-                'store'   => 'supplier_documents.store',
-                'show'    => 'supplier_documents.show',
+                'index' => 'supplier_documents.index',
+                'store' => 'supplier_documents.store',
+                'show' => 'supplier_documents.show',
                 'destroy' => 'supplier_documents.destroy',
             ]);
 
@@ -153,19 +157,19 @@ Route::prefix('v1')->group(function (): void {
 
         Route::apiResource('purchase-orders', PurchaseOrderController::class)
             ->names([
-                'index'   => 'purchase_orders.index',
-                'store'   => 'purchase_orders.store',
-                'show'    => 'purchase_orders.show',
-                'update'  => 'purchase_orders.update',
+                'index' => 'purchase_orders.index',
+                'store' => 'purchase_orders.store',
+                'show' => 'purchase_orders.show',
+                'update' => 'purchase_orders.update',
                 'destroy' => 'purchase_orders.destroy',
             ]);
 
         Route::apiResource('purchase-order-items', PurchaseOrderItemController::class)
             ->names([
-                'index'   => 'purchase_order_items.index',
-                'store'   => 'purchase_order_items.store',
-                'show'    => 'purchase_order_items.show',
-                'update'  => 'purchase_order_items.update',
+                'index' => 'purchase_order_items.index',
+                'store' => 'purchase_order_items.store',
+                'show' => 'purchase_order_items.show',
+                'update' => 'purchase_order_items.update',
                 'destroy' => 'purchase_order_items.destroy',
             ]);
 
@@ -177,29 +181,29 @@ Route::prefix('v1')->group(function (): void {
 
         Route::apiResource('rfq-items', RfqItemController::class)
             ->names([
-                'index'   => 'rfq_items.index',
-                'store'   => 'rfq_items.store',
-                'show'    => 'rfq_items.show',
-                'update'  => 'rfq_items.update',
+                'index' => 'rfq_items.index',
+                'store' => 'rfq_items.store',
+                'show' => 'rfq_items.show',
+                'update' => 'rfq_items.update',
                 'destroy' => 'rfq_items.destroy',
             ]);
 
         Route::apiResource('canvass-responses', CanvassResponseController::class)
             ->names([
-                'index'   => 'canvass_responses.index',
-                'store'   => 'canvass_responses.store',
-                'show'    => 'canvass_responses.show',
-                'update'  => 'canvass_responses.update',
+                'index' => 'canvass_responses.index',
+                'store' => 'canvass_responses.store',
+                'show' => 'canvass_responses.show',
+                'update' => 'canvass_responses.update',
                 'destroy' => 'canvass_responses.destroy',
             ]);
 
         Route::apiResource('abstracts-of-quotation', AbstractOfQuotationController::class)
             ->parameters(['abstracts-of-quotation' => 'abstract_of_quotation'])
             ->names([
-                'index'   => 'abstracts_of_quotation.index',
-                'store'   => 'abstracts_of_quotation.store',
-                'show'    => 'abstracts_of_quotation.show',
-                'update'  => 'abstracts_of_quotation.update',
+                'index' => 'abstracts_of_quotation.index',
+                'store' => 'abstracts_of_quotation.store',
+                'show' => 'abstracts_of_quotation.show',
+                'update' => 'abstracts_of_quotation.update',
                 'destroy' => 'abstracts_of_quotation.destroy',
             ]);
 
@@ -208,20 +212,20 @@ Route::prefix('v1')->group(function (): void {
         // ---------------------------------------------------------------------
         Route::apiResource('bac-resolutions', BacResolutionController::class)
             ->names([
-                'index'   => 'bac_resolutions.index',
-                'store'   => 'bac_resolutions.store',
-                'show'    => 'bac_resolutions.show',
-                'update'  => 'bac_resolutions.update',
+                'index' => 'bac_resolutions.index',
+                'store' => 'bac_resolutions.store',
+                'show' => 'bac_resolutions.show',
+                'update' => 'bac_resolutions.update',
                 'destroy' => 'bac_resolutions.destroy',
             ]);
 
         Route::apiResource('notices-of-award', NoticeOfAwardController::class)
             ->parameters(['notices-of-award' => 'notice_of_award'])
             ->names([
-                'index'   => 'notices_of_award.index',
-                'store'   => 'notices_of_award.store',
-                'show'    => 'notices_of_award.show',
-                'update'  => 'notices_of_award.update',
+                'index' => 'notices_of_award.index',
+                'store' => 'notices_of_award.store',
+                'show' => 'notices_of_award.show',
+                'update' => 'notices_of_award.update',
                 'destroy' => 'notices_of_award.destroy',
             ]);
 

@@ -6,15 +6,39 @@ namespace App\Http\Controllers\V1\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class AuthController extends Controller
 {
-    public function __construct(private readonly AuthService $service)
+    public function __construct(private readonly AuthService $service) {}
+
+    /**
+     * Register a new user account and issue a Sanctum token.
+     */
+    public function register(RegisterRequest $request): JsonResponse
     {
+        $result = $this->service->register(
+            firstName: $request->validated('first_name'),
+            lastName: $request->validated('last_name'),
+            email: $request->validated('email'),
+            password: $request->validated('password'),
+            middleName: $request->validated('middle_name'),
+            extensionName: $request->validated('extension_name'),
+        );
+
+        return response()->json([
+            'data' => [
+                'token' => $result['token'],
+                'user' => new UserResource($result['user']),
+            ],
+            'message' => 'Registration successful.',
+            'errors' => null,
+        ], 201);
     }
 
     /**
@@ -64,7 +88,7 @@ final class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user()->load(['role', 'office']);
 
         return response()->json([
