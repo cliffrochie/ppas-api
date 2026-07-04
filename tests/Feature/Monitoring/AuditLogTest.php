@@ -42,22 +42,22 @@ class AuditLogTest extends TestCase
     private function createAuditLog(User $user): AuditLog
     {
         $pr = PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => 'Test PR',
-            'status'               => 'draft',
+            'purpose' => 'Test PR',
+            'status' => 'draft',
         ]);
 
         return AuditLog::create([
-            'user_id'        => $user->id,
+            'user_id' => $user->id,
             'auditable_type' => PurchaseRequest::class,
-            'auditable_id'   => $pr->id,
-            'event'          => 'updated',
-            'field'          => 'status',
-            'old_value'      => 'draft',
-            'new_value'      => 'submitted',
-            'ip_address'     => '127.0.0.1',
-            'created_at'     => now(),
+            'auditable_id' => $pr->id,
+            'event' => 'updated',
+            'field' => 'status',
+            'old_value' => 'draft',
+            'new_value' => 'submitted',
+            'ip_address' => '127.0.0.1',
+            'created_at' => now(),
         ]);
     }
 
@@ -106,6 +106,32 @@ class AuditLogTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_index_filters_by_event(): void
+    {
+        $officer = $this->procurementOfficer();
+        $this->createAuditLog($officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/audit-logs?event=updated');
+
+        $response->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, count($response->json('data')));
+    }
+
+    public function test_index_filters_by_user_id(): void
+    {
+        $officerA = $this->procurementOfficer();
+        $officerB = $this->procurementOfficer();
+        $this->createAuditLog($officerA);
+        $this->createAuditLog($officerB);
+
+        $response = $this->actingAs($officerA, 'sanctum')
+            ->getJson("/api/v1/audit-logs?user_id={$officerA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // GET /api/v1/audit-logs/{auditLog} — show
     // -------------------------------------------------------------------------
@@ -113,7 +139,7 @@ class AuditLogTest extends TestCase
     public function test_show_returns_audit_log(): void
     {
         $officer = $this->procurementOfficer();
-        $log     = $this->createAuditLog($officer);
+        $log = $this->createAuditLog($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->getJson("/api/v1/audit-logs/{$log->id}")
@@ -148,7 +174,7 @@ class AuditLogTest extends TestCase
     public function test_delete_audit_log_is_not_found(): void
     {
         $officer = $this->procurementOfficer();
-        $log     = $this->createAuditLog($officer);
+        $log = $this->createAuditLog($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->deleteJson("/api/v1/audit-logs/{$log->id}")

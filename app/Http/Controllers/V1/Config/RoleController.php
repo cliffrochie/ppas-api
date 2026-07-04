@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Config;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Config\ListRoleRequest;
 use App\Http\Requests\Config\StoreRoleRequest;
 use App\Http\Requests\Config\UpdateRoleRequest;
 use App\Http\Resources\RoleResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class RoleController extends Controller
 {
-    public function __construct(private readonly RoleService $service)
-    {
-    }
+    public function __construct(private readonly RoleService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListRoleRequest $request): JsonResponse
     {
         $this->authorize('viewAny', Role::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => RoleResource::collection($paginator->items()),

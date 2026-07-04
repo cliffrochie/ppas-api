@@ -34,10 +34,10 @@ class CanvassResponseTest extends TestCase
         $seq++;
 
         return PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => "Test PR #{$seq}",
-            'status'               => 'pr_approved',
+            'purpose' => "Test PR #{$seq}",
+            'status' => 'pr_approved',
         ]);
     }
 
@@ -48,9 +48,9 @@ class CanvassResponseTest extends TestCase
 
         return Rfq::create([
             'purchase_request_id' => $pr->id,
-            'prepared_by_id'      => $user->id,
-            'rfq_number'          => sprintf('RFQ-%d-%05d', now()->year, $seq),
-            'status'              => 'draft',
+            'prepared_by_id' => $user->id,
+            'rfq_number' => sprintf('RFQ-%d-%05d', now()->year, $seq),
+            'status' => 'draft',
         ]);
     }
 
@@ -58,30 +58,30 @@ class CanvassResponseTest extends TestCase
     {
         $prItem = PurchaseRequestItem::create([
             'purchase_request_id' => $pr->id,
-            'item_description'    => 'Bond Paper A4',
-            'unit_of_measure'     => 'ream',
-            'quantity'            => 10,
-            'unit_cost'           => 200.00,
-            'total_cost'          => 2000.00,
+            'item_description' => 'Bond Paper A4',
+            'unit_of_measure' => 'ream',
+            'quantity' => 10,
+            'unit_cost' => 200.00,
+            'total_cost' => 2000.00,
         ]);
 
         return RfqItem::create([
-            'rfq_id'           => $rfq->id,
-            'pr_item_id'       => $prItem->id,
+            'rfq_id' => $rfq->id,
+            'pr_item_id' => $prItem->id,
             'item_description' => 'Bond Paper A4',
-            'unit_of_measure'  => 'ream',
-            'quantity'         => 10,
+            'unit_of_measure' => 'ream',
+            'quantity' => 10,
         ]);
     }
 
     private function createCanvassResponse(Rfq $rfq, RfqItem $item): CanvassResponse
     {
         return CanvassResponse::create([
-            'rfq_id'        => $rfq->id,
-            'rfq_item_id'   => $item->id,
+            'rfq_id' => $rfq->id,
+            'rfq_item_id' => $item->id,
             'supplier_name' => 'ABC Supplies',
-            'unit_price'    => 180.00,
-            'total_price'   => 1800.00,
+            'unit_price' => 180.00,
+            'total_price' => 1800.00,
         ]);
     }
 
@@ -111,24 +111,61 @@ class CanvassResponseTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_rfq_id(): void
+    {
+        $officer = $this->procurementOfficer();
+        $prA = $this->createPurchaseRequest($officer);
+        $prB = $this->createPurchaseRequest($officer);
+        $rfqA = $this->createRfq($prA, $officer);
+        $rfqB = $this->createRfq($prB, $officer);
+        $itemA = $this->createRfqItem($rfqA, $prA);
+        $itemB = $this->createRfqItem($rfqB, $prB);
+        $this->createCanvassResponse($rfqA, $itemA);
+        $this->createCanvassResponse($rfqB, $itemB);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/canvass-responses?rfq_id={$rfqA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_index_filters_by_search_supplier_name(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $item = $this->createRfqItem($rfq, $pr);
+
+        CanvassResponse::create(['rfq_id' => $rfq->id, 'rfq_item_id' => $item->id, 'supplier_name' => 'XYZ Unique Trading', 'unit_price' => 100, 'total_price' => 1000]);
+        CanvassResponse::create(['rfq_id' => $rfq->id, 'rfq_item_id' => $item->id, 'supplier_name' => 'ABC Corp', 'unit_price' => 90, 'total_price' => 900]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/canvass-responses?search=XYZ');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertStringContainsStringIgnoringCase('XYZ', $response->json('data.0.supplier_name'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/canvass-responses — store
     // -------------------------------------------------------------------------
 
     public function test_store_creates_canvass_response(): void
     {
-        $officer  = $this->procurementOfficer();
-        $pr       = $this->createPurchaseRequest($officer);
-        $rfq      = $this->createRfq($pr, $officer);
-        $rfqItem  = $this->createRfqItem($rfq, $pr);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $rfqItem = $this->createRfqItem($rfq, $pr);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/canvass-responses', [
-                'rfq_id'        => $rfq->id,
-                'rfq_item_id'   => $rfqItem->id,
+                'rfq_id' => $rfq->id,
+                'rfq_item_id' => $rfqItem->id,
                 'supplier_name' => 'DEF Supplies',
-                'unit_price'    => 190.00,
-                'total_price'   => 1900.00,
+                'unit_price' => 190.00,
+                'total_price' => 1900.00,
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.supplier_name', 'DEF Supplies')
@@ -152,10 +189,10 @@ class CanvassResponseTest extends TestCase
 
     public function test_show_returns_canvass_response(): void
     {
-        $officer  = $this->procurementOfficer();
-        $pr       = $this->createPurchaseRequest($officer);
-        $rfq      = $this->createRfq($pr, $officer);
-        $rfqItem  = $this->createRfqItem($rfq, $pr);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $rfqItem = $this->createRfqItem($rfq, $pr);
         $response = $this->createCanvassResponse($rfq, $rfqItem);
 
         $this->actingAs($officer, 'sanctum')
@@ -180,10 +217,10 @@ class CanvassResponseTest extends TestCase
 
     public function test_update_modifies_canvass_response(): void
     {
-        $officer  = $this->procurementOfficer();
-        $pr       = $this->createPurchaseRequest($officer);
-        $rfq      = $this->createRfq($pr, $officer);
-        $rfqItem  = $this->createRfqItem($rfq, $pr);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $rfqItem = $this->createRfqItem($rfq, $pr);
         $response = $this->createCanvassResponse($rfq, $rfqItem);
 
         $this->actingAs($officer, 'sanctum')
@@ -200,10 +237,10 @@ class CanvassResponseTest extends TestCase
 
     public function test_destroy_deletes_canvass_response(): void
     {
-        $officer  = $this->procurementOfficer();
-        $pr       = $this->createPurchaseRequest($officer);
-        $rfq      = $this->createRfq($pr, $officer);
-        $rfqItem  = $this->createRfqItem($rfq, $pr);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $rfqItem = $this->createRfqItem($rfq, $pr);
         $response = $this->createCanvassResponse($rfq, $rfqItem);
 
         $this->actingAs($officer, 'sanctum')

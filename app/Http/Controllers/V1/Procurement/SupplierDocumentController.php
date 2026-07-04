@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Procurement\ListSupplierDocumentRequest;
 use App\Http\Requests\Procurement\StoreSupplierDocumentRequest;
 use App\Http\Resources\SupplierDocumentResource;
 use App\Models\SupplierDocument;
@@ -15,26 +16,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class SupplierDocumentController extends Controller
 {
-    public function __construct(private readonly SupplierDocumentService $service)
-    {
-    }
+    public function __construct(private readonly SupplierDocumentService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListSupplierDocumentRequest $request): JsonResponse
     {
         $this->authorize('viewAny', SupplierDocument::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => SupplierDocumentResource::collection($paginator->items()),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
             ],
             'message' => 'Supplier documents retrieved successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 
@@ -43,9 +42,9 @@ final class SupplierDocumentController extends Controller
         $document = $this->service->store($request->validated());
 
         return response()->json([
-            'data'    => new SupplierDocumentResource($document),
+            'data' => new SupplierDocumentResource($document),
             'message' => 'Supplier document uploaded successfully.',
-            'errors'  => null,
+            'errors' => null,
         ], 201);
     }
 
@@ -56,9 +55,9 @@ final class SupplierDocumentController extends Controller
         $supplierDocument = $this->service->show($supplierDocument);
 
         return response()->json([
-            'data'    => new SupplierDocumentResource($supplierDocument),
+            'data' => new SupplierDocumentResource($supplierDocument),
             'message' => 'Supplier document retrieved successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 
@@ -69,9 +68,9 @@ final class SupplierDocumentController extends Controller
         $this->service->destroy($supplierDocument);
 
         return response()->json([
-            'data'    => null,
+            'data' => null,
             'message' => 'Supplier document deleted successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 

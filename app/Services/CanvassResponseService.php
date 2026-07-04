@@ -10,9 +10,14 @@ use Illuminate\Support\Facades\DB;
 
 final class CanvassResponseService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return CanvassResponse::latest()->paginate(15);
+        return CanvassResponse::query()
+            ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
+            ->when($filters['rfq_item_id'] ?? null, fn ($q, $v) => $q->where('rfq_item_id', $v))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('supplier_name', 'like', "%{$v}%"))
+            ->latest()
+            ->paginate(15);
     }
 
     public function store(array $validated): CanvassResponse
@@ -31,6 +36,8 @@ final class CanvassResponseService
 
     public function destroy(CanvassResponse $response): void
     {
-        DB::transaction(function () use ($response): void { $response->delete(); });
+        DB::transaction(function () use ($response): void {
+            $response->delete();
+        });
     }
 }

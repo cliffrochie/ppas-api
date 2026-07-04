@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Config;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Config\ListCategoryRequest;
 use App\Http\Requests\Config\StoreCategoryRequest;
 use App\Http\Requests\Config\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class CategoryController extends Controller
 {
-    public function __construct(private readonly CategoryService $service)
-    {
-    }
+    public function __construct(private readonly CategoryService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListCategoryRequest $request): JsonResponse
     {
         $this->authorize('viewAny', Category::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => CategoryResource::collection($paginator->items()),

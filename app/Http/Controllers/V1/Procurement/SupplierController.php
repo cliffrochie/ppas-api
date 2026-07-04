@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Procurement\ListSupplierRequest;
 use App\Http\Requests\Procurement\StoreSupplierRequest;
 use App\Http\Requests\Procurement\UpdateSupplierRequest;
 use App\Http\Resources\SupplierResource;
@@ -16,26 +17,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class SupplierController extends Controller
 {
-    public function __construct(private readonly SupplierService $service)
-    {
-    }
+    public function __construct(private readonly SupplierService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListSupplierRequest $request): JsonResponse
     {
         $this->authorize('viewAny', Supplier::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => SupplierResource::collection($paginator->items()),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
             ],
             'message' => 'Suppliers retrieved successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 
@@ -44,9 +43,9 @@ final class SupplierController extends Controller
         $supplier = $this->service->store($request->validated());
 
         return response()->json([
-            'data'    => new SupplierResource($supplier),
+            'data' => new SupplierResource($supplier),
             'message' => 'Supplier created successfully.',
-            'errors'  => null,
+            'errors' => null,
         ], 201);
     }
 
@@ -57,9 +56,9 @@ final class SupplierController extends Controller
         $supplier = $this->service->show($supplier);
 
         return response()->json([
-            'data'    => new SupplierResource($supplier),
+            'data' => new SupplierResource($supplier),
             'message' => 'Supplier retrieved successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 
@@ -68,9 +67,9 @@ final class SupplierController extends Controller
         $supplier = $this->service->update($supplier, $request->validated());
 
         return response()->json([
-            'data'    => new SupplierResource($supplier),
+            'data' => new SupplierResource($supplier),
             'message' => 'Supplier updated successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 
@@ -81,9 +80,9 @@ final class SupplierController extends Controller
         $this->service->destroy($supplier);
 
         return response()->json([
-            'data'    => null,
+            'data' => null,
             'message' => 'Supplier deleted successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 

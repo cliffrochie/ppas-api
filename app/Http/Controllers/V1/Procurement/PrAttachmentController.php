@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Procurement\ListPrAttachmentRequest;
 use App\Http\Requests\Procurement\StorePrAttachmentRequest;
 use App\Http\Requests\Procurement\UpdatePrAttachmentRequest;
 use App\Http\Resources\PrAttachmentResource;
@@ -16,15 +17,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class PrAttachmentController extends Controller
 {
-    public function __construct(private readonly PrAttachmentService $service)
-    {
-    }
+    public function __construct(private readonly PrAttachmentService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListPrAttachmentRequest $request): JsonResponse
     {
         $this->authorize('viewAny', PrAttachment::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => PrAttachmentResource::collection($paginator->items()),

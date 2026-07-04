@@ -51,6 +51,31 @@ class RoleTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_search_returns_matching_roles(): void
+    {
+        $user = $this->requester();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/roles?search=officer');
+
+        $response->assertStatus(200);
+
+        foreach ($response->json('data') as $item) {
+            $this->assertStringContainsStringIgnoringCase('officer', $item['name']);
+        }
+    }
+
+    public function test_index_filters_by_search_returns_empty_when_no_match(): void
+    {
+        $user = $this->requester();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/roles?search=nonexistent_xyz_role');
+
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/roles — store
     // -------------------------------------------------------------------------
@@ -61,7 +86,7 @@ class RoleTest extends TestCase
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/roles', [
-                'name'        => 'test_role',
+                'name' => 'test_role',
                 'description' => 'A test role',
             ]);
 

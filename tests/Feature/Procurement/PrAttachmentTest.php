@@ -28,11 +28,11 @@ class PrAttachmentTest extends TestCase
 
     private function requester(): User
     {
-        $role   = Role::where('name', 'requester')->firstOrFail();
+        $role = Role::where('name', 'requester')->firstOrFail();
         $office = Office::where('code', 'ORM')->value('id');
 
         return User::factory()->create([
-            'role_id'   => $role->id,
+            'role_id' => $role->id,
             'office_id' => $office,
         ]);
     }
@@ -45,10 +45,10 @@ class PrAttachmentTest extends TestCase
     private function createPurchaseRequest(User $user): PurchaseRequest
     {
         return PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => 'Test procurement purpose',
-            'status'               => 'draft',
+            'purpose' => 'Test procurement purpose',
+            'status' => 'draft',
         ]);
     }
 
@@ -62,14 +62,70 @@ class PrAttachmentTest extends TestCase
 
         return PrAttachment::create([
             'purchase_request_id' => $pr->id,
-            'uploader_id'         => $uploader->id,
-            'type'                => 'other',
-            'file_name'           => 'document.pdf',
-            'file_path'           => $path,
-            'file_size'           => $file->getSize(),
-            'mime_type'           => 'application/pdf',
-            'uploaded_at'         => now(),
+            'uploader_id' => $uploader->id,
+            'type' => 'other',
+            'file_name' => 'document.pdf',
+            'file_path' => $path,
+            'file_size' => $file->getSize(),
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
         ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/v1/pr-attachments — index
+    // -------------------------------------------------------------------------
+
+    public function test_index_returns_401_when_unauthenticated(): void
+    {
+        $this->getJson('/api/v1/pr-attachments')
+            ->assertStatus(401);
+    }
+
+    public function test_index_filters_by_purchase_request_id(): void
+    {
+        Storage::fake('private');
+
+        $officer = $this->procurementOfficer();
+        $prA = $this->createPurchaseRequest($officer);
+        $prB = $this->createPurchaseRequest($officer);
+        $this->createAttachment($officer, $prA);
+        $this->createAttachment($officer, $prB);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/pr-attachments?purchase_request_id={$prA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_index_filters_by_type(): void
+    {
+        Storage::fake('private');
+
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $file = UploadedFile::fake()->create('doc.pdf', 50, 'application/pdf');
+        $path = $file->store("pr-attachments/{$pr->id}", 'private');
+
+        PrAttachment::create([
+            'purchase_request_id' => $pr->id,
+            'uploader_id' => $officer->id,
+            'type' => 'signed_pr',
+            'file_name' => 'doc.pdf',
+            'file_path' => $path,
+            'file_size' => 50,
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
+        ]);
+
+        $this->createAttachment($officer, $pr); // type = 'other'
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/pr-attachments?type=signed_pr');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
     }
 
     // -------------------------------------------------------------------------
@@ -82,14 +138,14 @@ class PrAttachmentTest extends TestCase
         Storage::fake('private');
 
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $file    = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
+        $pr = $this->createPurchaseRequest($officer);
+        $file = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/pr-attachments', [
                 'purchase_request_id' => $pr->id,
-                'type'                => 'other',
-                'file'                => $file,
+                'type' => 'other',
+                'file' => $file,
             ]);
 
         $response->assertStatus(201);
@@ -104,14 +160,14 @@ class PrAttachmentTest extends TestCase
         Storage::fake('private');
 
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $file    = UploadedFile::fake()->create('report.pdf', 50, 'application/pdf');
+        $pr = $this->createPurchaseRequest($officer);
+        $file = UploadedFile::fake()->create('report.pdf', 50, 'application/pdf');
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/pr-attachments', [
                 'purchase_request_id' => $pr->id,
-                'type'                => 'other',
-                'file'                => $file,
+                'type' => 'other',
+                'file' => $file,
             ]);
 
         $response->assertStatus(201);
@@ -125,14 +181,14 @@ class PrAttachmentTest extends TestCase
         Storage::fake('private');
 
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $file    = UploadedFile::fake()->create('spec.pdf', 50, 'application/pdf');
+        $pr = $this->createPurchaseRequest($officer);
+        $file = UploadedFile::fake()->create('spec.pdf', 50, 'application/pdf');
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/pr-attachments', [
                 'purchase_request_id' => $pr->id,
-                'type'                => 'other',
-                'file'                => $file,
+                'type' => 'other',
+                'file' => $file,
             ]);
 
         $response->assertStatus(201);
@@ -148,8 +204,8 @@ class PrAttachmentTest extends TestCase
     {
         Storage::fake('private');
 
-        $officer    = $this->procurementOfficer();
-        $pr         = $this->createPurchaseRequest($officer);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
         $attachment = $this->createAttachment($officer, $pr);
 
         $response = $this->actingAs($officer, 'sanctum')
@@ -168,8 +224,8 @@ class PrAttachmentTest extends TestCase
     {
         Storage::fake('private');
 
-        $officer    = $this->procurementOfficer();
-        $pr         = $this->createPurchaseRequest($officer);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
         $attachment = $this->createAttachment($officer, $pr);
 
         $this->getJson("/api/v1/pr-attachments/{$attachment->id}/download")
@@ -184,10 +240,10 @@ class PrAttachmentTest extends TestCase
     {
         Storage::fake('private');
 
-        $officer    = $this->procurementOfficer();
-        $pr         = $this->createPurchaseRequest($officer);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
         $attachment = $this->createAttachment($officer, $pr);
-        $filePath   = $attachment->file_path;
+        $filePath = $attachment->file_path;
 
         // Confirm the file exists before deletion.
         Storage::disk('private')->assertExists($filePath);

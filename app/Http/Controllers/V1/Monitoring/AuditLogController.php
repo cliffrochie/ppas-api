@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Monitoring;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Monitoring\ListAuditLogRequest;
 use App\Http\Resources\AuditLogResource;
 use App\Models\AuditLog;
 use App\Services\AuditLogService;
@@ -12,17 +13,15 @@ use Illuminate\Http\JsonResponse;
 
 final class AuditLogController extends Controller
 {
-    public function __construct(private readonly AuditLogService $service)
-    {
-    }
+    public function __construct(private readonly AuditLogService $service) {}
 
     // Read-only: index + show only (append-only log)
 
-    public function index(): JsonResponse
+    public function index(ListAuditLogRequest $request): JsonResponse
     {
         $this->authorize('viewAny', AuditLog::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => AuditLogResource::collection($paginator->items()),

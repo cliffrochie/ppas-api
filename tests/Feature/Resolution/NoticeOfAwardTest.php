@@ -34,30 +34,30 @@ class NoticeOfAwardTest extends TestCase
         $seq++;
 
         $pr = PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => "Test PR #{$seq}",
-            'status'               => 'pr_approved',
+            'purpose' => "Test PR #{$seq}",
+            'status' => 'pr_approved',
         ]);
 
         $rfq = Rfq::create([
             'purchase_request_id' => $pr->id,
-            'prepared_by_id'      => $user->id,
-            'rfq_number'          => sprintf('RFQ-%d-%05d', now()->year, $seq),
-            'status'              => 'draft',
+            'prepared_by_id' => $user->id,
+            'rfq_number' => sprintf('RFQ-%d-%05d', now()->year, $seq),
+            'status' => 'draft',
         ]);
 
         $abstract = AbstractOfQuotation::create([
-            'rfq_id'         => $rfq->id,
+            'rfq_id' => $rfq->id,
             'prepared_by_id' => $user->id,
-            'status'         => 'approved',
+            'status' => 'approved',
         ]);
 
         return BacResolution::create([
-            'resolution_number'        => "BAC-{$seq}",
+            'resolution_number' => "BAC-{$seq}",
             'abstract_of_quotation_id' => $abstract->id,
-            'prepared_by_id'           => $user->id,
-            'file_path'                => 'documents/bac/resolution.pdf',
+            'prepared_by_id' => $user->id,
+            'file_path' => 'documents/bac/resolution.pdf',
         ]);
     }
 
@@ -67,11 +67,11 @@ class NoticeOfAwardTest extends TestCase
         $seq++;
 
         return NoticeOfAward::create([
-            'noa_number'        => "NOA-{$seq}",
+            'noa_number' => "NOA-{$seq}",
             'bac_resolution_id' => $resolution->id,
-            'awarded_supplier'  => 'Best Supplier Corp.',
-            'awarded_amount'    => 50000.00,
-            'file_path'         => 'documents/noa/notice.pdf',
+            'awarded_supplier' => 'Best Supplier Corp.',
+            'awarded_amount' => 50000.00,
+            'file_path' => 'documents/noa/notice.pdf',
         ]);
     }
 
@@ -101,22 +101,50 @@ class NoticeOfAwardTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_bac_resolution_id(): void
+    {
+        $officer = $this->procurementOfficer();
+        $resA = $this->createBacResolution($officer);
+        $resB = $this->createBacResolution($officer);
+        $this->createNoticeOfAward($resA);
+        $this->createNoticeOfAward($resB);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/notices-of-award?bac_resolution_id={$resA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_index_filters_by_search_supplier(): void
+    {
+        $officer = $this->procurementOfficer();
+        $resolution = $this->createBacResolution($officer);
+        $this->createNoticeOfAward($resolution);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/notices-of-award?search=Best');
+
+        $response->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, count($response->json('data')));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/notices-of-award — store
     // -------------------------------------------------------------------------
 
     public function test_store_creates_notice_of_award(): void
     {
-        $officer    = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $resolution = $this->createBacResolution($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/notices-of-award', [
-                'noa_number'        => 'NOA-2026-001',
+                'noa_number' => 'NOA-2026-001',
                 'bac_resolution_id' => $resolution->id,
-                'awarded_supplier'  => 'Winning Corp.',
-                'awarded_amount'    => 75000.00,
-                'file_path'         => 'documents/noa/award.pdf',
+                'awarded_supplier' => 'Winning Corp.',
+                'awarded_amount' => 75000.00,
+                'file_path' => 'documents/noa/award.pdf',
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.noa_number', 'NOA-2026-001')
@@ -136,17 +164,17 @@ class NoticeOfAwardTest extends TestCase
 
     public function test_store_returns_422_when_resolution_already_has_noa(): void
     {
-        $officer    = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $resolution = $this->createBacResolution($officer);
         $this->createNoticeOfAward($resolution);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/notices-of-award', [
-                'noa_number'        => 'NOA-DUPLICATE',
+                'noa_number' => 'NOA-DUPLICATE',
                 'bac_resolution_id' => $resolution->id,
-                'awarded_supplier'  => 'Duplicate Corp.',
-                'awarded_amount'    => 10000.00,
-                'file_path'         => 'documents/dup.pdf',
+                'awarded_supplier' => 'Duplicate Corp.',
+                'awarded_amount' => 10000.00,
+                'file_path' => 'documents/dup.pdf',
             ])
             ->assertStatus(422)
             ->assertJsonStructure(['errors' => ['bac_resolution_id']]);
@@ -158,9 +186,9 @@ class NoticeOfAwardTest extends TestCase
 
     public function test_show_returns_notice_of_award(): void
     {
-        $officer    = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $resolution = $this->createBacResolution($officer);
-        $noa        = $this->createNoticeOfAward($resolution);
+        $noa = $this->createNoticeOfAward($resolution);
 
         $this->actingAs($officer, 'sanctum')
             ->getJson("/api/v1/notices-of-award/{$noa->id}")
@@ -184,9 +212,9 @@ class NoticeOfAwardTest extends TestCase
 
     public function test_update_modifies_notice_of_award(): void
     {
-        $officer    = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $resolution = $this->createBacResolution($officer);
-        $noa        = $this->createNoticeOfAward($resolution);
+        $noa = $this->createNoticeOfAward($resolution);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/notices-of-award/{$noa->id}", [
@@ -202,9 +230,9 @@ class NoticeOfAwardTest extends TestCase
 
     public function test_destroy_deletes_notice_of_award(): void
     {
-        $officer    = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $resolution = $this->createBacResolution($officer);
-        $noa        = $this->createNoticeOfAward($resolution);
+        $noa = $this->createNoticeOfAward($resolution);
 
         $this->actingAs($officer, 'sanctum')
             ->deleteJson("/api/v1/notices-of-award/{$noa->id}")

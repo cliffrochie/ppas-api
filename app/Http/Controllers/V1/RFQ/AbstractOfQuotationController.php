@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\RFQ;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RFQ\ListAbstractOfQuotationRequest;
 use App\Http\Requests\RFQ\StoreAbstractOfQuotationRequest;
 use App\Http\Requests\RFQ\UpdateAbstractOfQuotationRequest;
 use App\Http\Resources\AbstractOfQuotationResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class AbstractOfQuotationController extends Controller
 {
-    public function __construct(private readonly AbstractOfQuotationService $service)
-    {
-    }
+    public function __construct(private readonly AbstractOfQuotationService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListAbstractOfQuotationRequest $request): JsonResponse
     {
         $this->authorize('viewAny', AbstractOfQuotation::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => AbstractOfQuotationResource::collection($paginator->items()),

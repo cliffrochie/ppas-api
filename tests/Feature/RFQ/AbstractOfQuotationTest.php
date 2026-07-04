@@ -32,10 +32,10 @@ class AbstractOfQuotationTest extends TestCase
         $seq++;
 
         return PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => "Test PR #{$seq}",
-            'status'               => 'pr_approved',
+            'purpose' => "Test PR #{$seq}",
+            'status' => 'pr_approved',
         ]);
     }
 
@@ -46,18 +46,18 @@ class AbstractOfQuotationTest extends TestCase
 
         return Rfq::create([
             'purchase_request_id' => $pr->id,
-            'prepared_by_id'      => $user->id,
-            'rfq_number'          => sprintf('RFQ-%d-%05d', now()->year, $seq),
-            'status'              => 'draft',
+            'prepared_by_id' => $user->id,
+            'rfq_number' => sprintf('RFQ-%d-%05d', now()->year, $seq),
+            'status' => 'draft',
         ]);
     }
 
     private function createAbstractOfQuotation(Rfq $rfq, User $user): AbstractOfQuotation
     {
         return AbstractOfQuotation::create([
-            'rfq_id'         => $rfq->id,
+            'rfq_id' => $rfq->id,
             'prepared_by_id' => $user->id,
-            'status'         => 'draft',
+            'status' => 'draft',
         ]);
     }
 
@@ -87,6 +87,37 @@ class AbstractOfQuotationTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_rfq_id(): void
+    {
+        $officer = $this->procurementOfficer();
+        $prA = $this->createPurchaseRequest($officer);
+        $prB = $this->createPurchaseRequest($officer);
+        $rfqA = $this->createRfq($prA, $officer);
+        $rfqB = $this->createRfq($prB, $officer);
+        $this->createAbstractOfQuotation($rfqA, $officer);
+        $this->createAbstractOfQuotation($rfqB, $officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/abstracts-of-quotation?rfq_id={$rfqA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_index_filters_by_status(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $this->createAbstractOfQuotation($rfq, $officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/abstracts-of-quotation?status=approved');
+
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/abstracts-of-quotation — store
     // -------------------------------------------------------------------------
@@ -94,12 +125,12 @@ class AbstractOfQuotationTest extends TestCase
     public function test_store_creates_abstract_of_quotation(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $rfq     = $this->createRfq($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/abstracts-of-quotation', [
-                'rfq_id'         => $rfq->id,
+                'rfq_id' => $rfq->id,
                 'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(201)
@@ -120,13 +151,13 @@ class AbstractOfQuotationTest extends TestCase
     public function test_store_returns_422_when_rfq_already_has_abstract(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $rfq     = $this->createRfq($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
         $this->createAbstractOfQuotation($rfq, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/abstracts-of-quotation', [
-                'rfq_id'         => $rfq->id,
+                'rfq_id' => $rfq->id,
                 'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(422)
@@ -139,9 +170,9 @@ class AbstractOfQuotationTest extends TestCase
 
     public function test_show_returns_abstract_of_quotation(): void
     {
-        $officer  = $this->procurementOfficer();
-        $pr       = $this->createPurchaseRequest($officer);
-        $rfq      = $this->createRfq($pr, $officer);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
         $abstract = $this->createAbstractOfQuotation($rfq, $officer);
 
         $this->actingAs($officer, 'sanctum')
@@ -166,9 +197,9 @@ class AbstractOfQuotationTest extends TestCase
 
     public function test_update_modifies_abstract_of_quotation(): void
     {
-        $officer  = $this->procurementOfficer();
-        $pr       = $this->createPurchaseRequest($officer);
-        $rfq      = $this->createRfq($pr, $officer);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
         $abstract = $this->createAbstractOfQuotation($rfq, $officer);
 
         $this->actingAs($officer, 'sanctum')
@@ -185,9 +216,9 @@ class AbstractOfQuotationTest extends TestCase
 
     public function test_destroy_deletes_abstract_of_quotation(): void
     {
-        $officer  = $this->procurementOfficer();
-        $pr       = $this->createPurchaseRequest($officer);
-        $rfq      = $this->createRfq($pr, $officer);
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
         $abstract = $this->createAbstractOfQuotation($rfq, $officer);
 
         $this->actingAs($officer, 'sanctum')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Procurement\ListPrStatusHistoryRequest;
 use App\Http\Resources\PrStatusHistoryResource;
 use App\Models\PrStatusHistory;
 use App\Services\PrStatusHistoryService;
@@ -12,17 +13,15 @@ use Illuminate\Http\JsonResponse;
 
 final class PrStatusHistoryController extends Controller
 {
-    public function __construct(private readonly PrStatusHistoryService $service)
-    {
-    }
+    public function __construct(private readonly PrStatusHistoryService $service) {}
 
     // Read-only: index + show only (append-only audit log)
 
-    public function index(): JsonResponse
+    public function index(ListPrStatusHistoryRequest $request): JsonResponse
     {
         $this->authorize('viewAny', PrStatusHistory::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => PrStatusHistoryResource::collection($paginator->items()),

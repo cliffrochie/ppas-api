@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Monitoring;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Monitoring\ListNotificationRequest;
 use App\Http\Resources\NotificationResource;
 use App\Models\Notification;
 use App\Services\NotificationService;
@@ -17,22 +18,22 @@ final class NotificationController extends Controller
     // No store/update — notifications are system-generated and immutable once created.
     // index + show + mark-read only.
 
-    public function index(): JsonResponse
+    public function index(ListNotificationRequest $request): JsonResponse
     {
         $this->authorize('viewAny', Notification::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
-            'data'    => NotificationResource::collection($paginator->items()),
-            'meta'    => [
+            'data' => NotificationResource::collection($paginator->items()),
+            'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
             ],
             'message' => 'Notifications retrieved successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 
@@ -41,9 +42,9 @@ final class NotificationController extends Controller
         $this->authorize('view', $notification);
 
         return response()->json([
-            'data'    => new NotificationResource($notification),
+            'data' => new NotificationResource($notification),
             'message' => 'Notification retrieved successfully.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 
@@ -54,9 +55,9 @@ final class NotificationController extends Controller
         $notification = $this->service->markRead($notification);
 
         return response()->json([
-            'data'    => new NotificationResource($notification),
+            'data' => new NotificationResource($notification),
             'message' => 'Notification marked as read.',
-            'errors'  => null,
+            'errors' => null,
         ]);
     }
 }

@@ -28,10 +28,10 @@ class PurchaseOrderTest extends TestCase
     private function createPurchaseRequest(User $user): PurchaseRequest
     {
         return PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => 'Test procurement purpose',
-            'status'               => 'pr_approved',
+            'purpose' => 'Test procurement purpose',
+            'status' => 'pr_approved',
         ]);
     }
 
@@ -42,9 +42,9 @@ class PurchaseOrderTest extends TestCase
 
         return PurchaseOrder::create([
             'purchase_request_id' => $pr->id,
-            'prepared_by_id'      => $preparedBy->id,
-            'po_number'           => sprintf('PO-%d-%05d', now()->year, $seq),
-            'status'              => 'draft',
+            'prepared_by_id' => $preparedBy->id,
+            'po_number' => sprintf('PO-%d-%05d', now()->year, $seq),
+            'status' => 'draft',
         ]);
     }
 
@@ -74,6 +74,38 @@ class PurchaseOrderTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $officer = $this->procurementOfficer();
+        $prA = $this->createPurchaseRequest($officer);
+        $prB = $this->createPurchaseRequest($officer);
+        $this->createPurchaseOrder($prA, $officer);
+        $poB = $this->createPurchaseOrder($prB, $officer);
+        $poB->forceFill(['status' => 'for_signature'])->save();
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/purchase-orders?status=for_signature');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertEquals('for_signature', $response->json('data.0.status'));
+    }
+
+    public function test_index_filters_by_purchase_request_id(): void
+    {
+        $officer = $this->procurementOfficer();
+        $prA = $this->createPurchaseRequest($officer);
+        $prB = $this->createPurchaseRequest($officer);
+        $this->createPurchaseOrder($prA, $officer);
+        $this->createPurchaseOrder($prB, $officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/purchase-orders?purchase_request_id={$prA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/purchase-orders — store
     // -------------------------------------------------------------------------
@@ -81,12 +113,12 @@ class PurchaseOrderTest extends TestCase
     public function test_store_creates_purchase_order(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
+        $pr = $this->createPurchaseRequest($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-orders', [
                 'purchase_request_id' => $pr->id,
-                'prepared_by_id'      => $officer->id,
+                'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(201)
             ->assertJsonPath('errors', null);
@@ -110,8 +142,8 @@ class PurchaseOrderTest extends TestCase
     public function test_show_returns_purchase_order(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->getJson("/api/v1/purchase-orders/{$po->id}")
@@ -136,8 +168,8 @@ class PurchaseOrderTest extends TestCase
     public function test_update_modifies_purchase_order(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/purchase-orders/{$po->id}", [
@@ -154,8 +186,8 @@ class PurchaseOrderTest extends TestCase
     public function test_destroy_deletes_purchase_order(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->deleteJson("/api/v1/purchase-orders/{$po->id}")
@@ -172,13 +204,13 @@ class PurchaseOrderTest extends TestCase
     public function test_po_number_is_auto_generated_on_create(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $year    = now()->year;
+        $pr = $this->createPurchaseRequest($officer);
+        $year = now()->year;
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-orders', [
                 'purchase_request_id' => $pr->id,
-                'prepared_by_id'      => $officer->id,
+                'prepared_by_id' => $officer->id,
             ]);
 
         $response->assertStatus(201);
@@ -188,14 +220,14 @@ class PurchaseOrderTest extends TestCase
     public function test_po_number_increments_per_year(): void
     {
         $officer = $this->procurementOfficer();
-        $pr1     = $this->createPurchaseRequest($officer);
-        $pr2     = $this->createPurchaseRequest($officer);
-        $year    = now()->year;
+        $pr1 = $this->createPurchaseRequest($officer);
+        $pr2 = $this->createPurchaseRequest($officer);
+        $year = now()->year;
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-orders', [
                 'purchase_request_id' => $pr1->id,
-                'prepared_by_id'      => $officer->id,
+                'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.po_number', "PO-{$year}-00001");
@@ -203,7 +235,7 @@ class PurchaseOrderTest extends TestCase
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-orders', [
                 'purchase_request_id' => $pr2->id,
-                'prepared_by_id'      => $officer->id,
+                'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.po_number', "PO-{$year}-00002");
@@ -216,8 +248,8 @@ class PurchaseOrderTest extends TestCase
     public function test_po_status_can_be_set_to_for_signature(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'for_signature'])
@@ -228,8 +260,8 @@ class PurchaseOrderTest extends TestCase
     public function test_po_status_can_be_set_to_supplier_acceptance(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'supplier_acceptance'])
@@ -240,8 +272,8 @@ class PurchaseOrderTest extends TestCase
     public function test_po_status_can_be_set_to_delivery_inspection(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'delivery_inspection'])
@@ -252,8 +284,8 @@ class PurchaseOrderTest extends TestCase
     public function test_po_status_rejects_old_signed_value(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'signed'])
@@ -263,8 +295,8 @@ class PurchaseOrderTest extends TestCase
     public function test_po_status_rejects_old_acknowledged_value(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $po      = $this->createPurchaseOrder($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $po = $this->createPurchaseOrder($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/purchase-orders/{$po->id}", ['status' => 'acknowledged'])

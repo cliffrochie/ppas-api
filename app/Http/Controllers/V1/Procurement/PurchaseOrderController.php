@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Procurement\ListPurchaseOrderRequest;
 use App\Http\Requests\Procurement\StorePurchaseOrderRequest;
 use App\Http\Requests\Procurement\UpdatePurchaseOrderRequest;
 use App\Http\Resources\PurchaseOrderResource;
@@ -12,7 +13,6 @@ use App\Models\PurchaseOrder;
 use App\Services\PdfService;
 use App\Services\PurchaseOrderService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 final class PurchaseOrderController extends Controller
@@ -20,14 +20,13 @@ final class PurchaseOrderController extends Controller
     public function __construct(
         private readonly PurchaseOrderService $service,
         private readonly PdfService $pdfService,
-    ) {
-    }
+    ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListPurchaseOrderRequest $request): JsonResponse
     {
         $this->authorize('viewAny', PurchaseOrder::class);
 
-        $paginator = $this->service->list($request->user());
+        $paginator = $this->service->list($request->user(), $request->validated());
 
         return response()->json([
             'data' => PurchaseOrderResource::collection($paginator->items()),

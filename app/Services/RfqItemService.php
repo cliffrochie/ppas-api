@@ -10,14 +10,18 @@ use Illuminate\Support\Facades\DB;
 
 final class RfqItemService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return RfqItem::latest()->paginate(15);
+        return RfqItem::query()
+            ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
+            ->when($filters['pr_item_id'] ?? null, fn ($q, $v) => $q->where('pr_item_id', $v))
+            ->latest()
+            ->paginate(15);
     }
 
     public function store(array $validated): RfqItem
     {
-        return DB::transaction(fn(): RfqItem => RfqItem::create($validated));
+        return DB::transaction(fn (): RfqItem => RfqItem::create($validated));
     }
 
     public function update(RfqItem $item, array $validated): RfqItem
@@ -32,6 +36,7 @@ final class RfqItemService
     public function destroy(RfqItem $item): void
     {
         DB::transaction(function () use ($item): void {
-            $item->delete(); });
+            $item->delete();
+        });
     }
 }

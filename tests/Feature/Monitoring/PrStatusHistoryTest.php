@@ -28,18 +28,18 @@ class PrStatusHistoryTest extends TestCase
     private function createStatusHistory(User $user): PrStatusHistory
     {
         $pr = PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => 'Test PR',
-            'status'               => 'submitted',
+            'purpose' => 'Test PR',
+            'status' => 'submitted',
         ]);
 
         return PrStatusHistory::create([
             'purchase_request_id' => $pr->id,
-            'actor_id'            => $user->id,
-            'from_status'         => 'draft',
-            'to_status'           => 'submitted',
-            'acted_at'            => now(),
+            'actor_id' => $user->id,
+            'from_status' => 'draft',
+            'to_status' => 'submitted',
+            'acted_at' => now(),
         ]);
     }
 
@@ -68,6 +68,43 @@ class PrStatusHistoryTest extends TestCase
                 'errors',
             ])
             ->assertJsonPath('errors', null);
+    }
+
+    public function test_index_filters_by_to_status(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = PurchaseRequest::create([
+            'requester_id' => $officer->id,
+            'requesting_office_id' => $this->officeId(),
+            'purpose' => 'Test PR',
+            'status' => 'under_review',
+        ]);
+
+        PrStatusHistory::create(['purchase_request_id' => $pr->id, 'actor_id' => $officer->id, 'to_status' => 'submitted', 'acted_at' => now()]);
+        PrStatusHistory::create(['purchase_request_id' => $pr->id, 'actor_id' => $officer->id, 'to_status' => 'under_review', 'acted_at' => now()]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/pr-status-histories?to_status=submitted');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertEquals('submitted', $response->json('data.0.to_status'));
+    }
+
+    public function test_index_filters_by_purchase_request_id(): void
+    {
+        $officer = $this->procurementOfficer();
+        $prA = PurchaseRequest::create(['requester_id' => $officer->id, 'requesting_office_id' => $this->officeId(), 'purpose' => 'PR A', 'status' => 'submitted']);
+        $prB = PurchaseRequest::create(['requester_id' => $officer->id, 'requesting_office_id' => $this->officeId(), 'purpose' => 'PR B', 'status' => 'submitted']);
+
+        PrStatusHistory::create(['purchase_request_id' => $prA->id, 'actor_id' => $officer->id, 'to_status' => 'submitted', 'acted_at' => now()]);
+        PrStatusHistory::create(['purchase_request_id' => $prB->id, 'actor_id' => $officer->id, 'to_status' => 'submitted', 'acted_at' => now()]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/pr-status-histories?purchase_request_id={$prA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
     }
 
     // -------------------------------------------------------------------------

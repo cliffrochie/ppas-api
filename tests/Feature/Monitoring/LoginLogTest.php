@@ -28,9 +28,9 @@ class LoginLogTest extends TestCase
     private function createLoginLog(User $user): LoginLog
     {
         return LoginLog::create([
-            'user_id'    => $user->id,
-            'email'      => $user->email,
-            'status'     => 'success',
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'status' => 'success',
             'ip_address' => '127.0.0.1',
             'user_agent' => 'PHPUnit',
             'created_at' => now(),
@@ -73,6 +73,41 @@ class LoginLogTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $officer = $this->procurementOfficer();
+        $this->createLoginLog($officer);
+        LoginLog::create([
+            'user_id' => $officer->id,
+            'email' => $officer->email,
+            'status' => 'failed',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'PHPUnit',
+            'created_at' => now(),
+        ]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/login-logs?status=success');
+
+        $response->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, count($response->json('data')));
+        foreach ($response->json('data') as $row) {
+            $this->assertEquals('success', $row['status']);
+        }
+    }
+
+    public function test_index_filters_by_search_email(): void
+    {
+        $officer = $this->procurementOfficer();
+        $this->createLoginLog($officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/login-logs?search={$officer->email}");
+
+        $response->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, count($response->json('data')));
+    }
+
     // -------------------------------------------------------------------------
     // GET /api/v1/login-logs/{loginLog} — show
     // -------------------------------------------------------------------------
@@ -80,7 +115,7 @@ class LoginLogTest extends TestCase
     public function test_show_returns_login_log(): void
     {
         $officer = $this->procurementOfficer();
-        $log     = $this->createLoginLog($officer);
+        $log = $this->createLoginLog($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->getJson("/api/v1/login-logs/{$log->id}")
@@ -115,7 +150,7 @@ class LoginLogTest extends TestCase
     public function test_delete_login_log_is_not_found(): void
     {
         $officer = $this->procurementOfficer();
-        $log     = $this->createLoginLog($officer);
+        $log = $this->createLoginLog($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->deleteJson("/api/v1/login-logs/{$log->id}")

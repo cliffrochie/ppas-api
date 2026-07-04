@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\RFQ;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RFQ\ListCanvassResponseRequest;
 use App\Http\Requests\RFQ\StoreCanvassResponseRequest;
 use App\Http\Requests\RFQ\UpdateCanvassResponseRequest;
 use App\Http\Resources\CanvassResponseResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class CanvassResponseController extends Controller
 {
-    public function __construct(private readonly CanvassResponseService $service)
-    {
-    }
+    public function __construct(private readonly CanvassResponseService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListCanvassResponseRequest $request): JsonResponse
     {
         $this->authorize('viewAny', CanvassResponse::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => CanvassResponseResource::collection($paginator->items()),

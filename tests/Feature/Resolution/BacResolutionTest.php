@@ -33,23 +33,23 @@ class BacResolutionTest extends TestCase
         $seq++;
 
         $pr = PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => "Test PR #{$seq}",
-            'status'               => 'pr_approved',
+            'purpose' => "Test PR #{$seq}",
+            'status' => 'pr_approved',
         ]);
 
         $rfq = Rfq::create([
             'purchase_request_id' => $pr->id,
-            'prepared_by_id'      => $user->id,
-            'rfq_number'          => sprintf('RFQ-%d-%05d', now()->year, $seq),
-            'status'              => 'draft',
+            'prepared_by_id' => $user->id,
+            'rfq_number' => sprintf('RFQ-%d-%05d', now()->year, $seq),
+            'status' => 'draft',
         ]);
 
         return AbstractOfQuotation::create([
-            'rfq_id'         => $rfq->id,
+            'rfq_id' => $rfq->id,
             'prepared_by_id' => $user->id,
-            'status'         => 'approved',
+            'status' => 'approved',
         ]);
     }
 
@@ -59,10 +59,10 @@ class BacResolutionTest extends TestCase
         $seq++;
 
         return BacResolution::create([
-            'resolution_number'        => "BAC-{$seq}",
+            'resolution_number' => "BAC-{$seq}",
             'abstract_of_quotation_id' => $abstract->id,
-            'prepared_by_id'           => $user->id,
-            'file_path'                => 'documents/bac/resolution.pdf',
+            'prepared_by_id' => $user->id,
+            'file_path' => 'documents/bac/resolution.pdf',
         ]);
     }
 
@@ -92,21 +92,49 @@ class BacResolutionTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_abstract_of_quotation_id(): void
+    {
+        $officer = $this->procurementOfficer();
+        $abstractA = $this->createAbstractOfQuotation($officer);
+        $abstractB = $this->createAbstractOfQuotation($officer);
+        $this->createBacResolution($abstractA, $officer);
+        $this->createBacResolution($abstractB, $officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/bac-resolutions?abstract_of_quotation_id={$abstractA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_index_filters_by_search_resolution_number(): void
+    {
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
+        $this->createBacResolution($abstract, $officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/bac-resolutions?search=BAC');
+
+        $response->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, count($response->json('data')));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/bac-resolutions — store
     // -------------------------------------------------------------------------
 
     public function test_store_creates_bac_resolution(): void
     {
-        $officer  = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $abstract = $this->createAbstractOfQuotation($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [
-                'resolution_number'        => 'BAC-2026-001',
+                'resolution_number' => 'BAC-2026-001',
                 'abstract_of_quotation_id' => $abstract->id,
-                'prepared_by_id'           => $officer->id,
-                'file_path'                => 'documents/bac/res.pdf',
+                'prepared_by_id' => $officer->id,
+                'file_path' => 'documents/bac/res.pdf',
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.resolution_number', 'BAC-2026-001')
@@ -126,16 +154,16 @@ class BacResolutionTest extends TestCase
 
     public function test_store_returns_422_when_abstract_already_has_resolution(): void
     {
-        $officer  = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $abstract = $this->createAbstractOfQuotation($officer);
         $this->createBacResolution($abstract, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [
-                'resolution_number'        => 'BAC-DUPLICATE',
+                'resolution_number' => 'BAC-DUPLICATE',
                 'abstract_of_quotation_id' => $abstract->id,
-                'prepared_by_id'           => $officer->id,
-                'file_path'                => 'documents/dup.pdf',
+                'prepared_by_id' => $officer->id,
+                'file_path' => 'documents/dup.pdf',
             ])
             ->assertStatus(422)
             ->assertJsonStructure(['errors' => ['abstract_of_quotation_id']]);
@@ -147,8 +175,8 @@ class BacResolutionTest extends TestCase
 
     public function test_show_returns_bac_resolution(): void
     {
-        $officer    = $this->procurementOfficer();
-        $abstract   = $this->createAbstractOfQuotation($officer);
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
         $resolution = $this->createBacResolution($abstract, $officer);
 
         $this->actingAs($officer, 'sanctum')
@@ -173,8 +201,8 @@ class BacResolutionTest extends TestCase
 
     public function test_update_modifies_bac_resolution(): void
     {
-        $officer    = $this->procurementOfficer();
-        $abstract   = $this->createAbstractOfQuotation($officer);
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
         $resolution = $this->createBacResolution($abstract, $officer);
 
         $this->actingAs($officer, 'sanctum')
@@ -191,8 +219,8 @@ class BacResolutionTest extends TestCase
 
     public function test_destroy_deletes_bac_resolution(): void
     {
-        $officer    = $this->procurementOfficer();
-        $abstract   = $this->createAbstractOfQuotation($officer);
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
         $resolution = $this->createBacResolution($abstract, $officer);
 
         $this->actingAs($officer, 'sanctum')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ListUserRequest;
 use App\Http\Requests\Auth\StoreUserRequest;
 use App\Http\Requests\Auth\UpdateUserRequest;
 use App\Http\Resources\UserResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class UserController extends Controller
 {
-    public function __construct(private readonly UserService $service)
-    {
-    }
+    public function __construct(private readonly UserService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListUserRequest $request): JsonResponse
     {
         $this->authorize('viewAny', User::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => UserResource::collection($paginator->items()),

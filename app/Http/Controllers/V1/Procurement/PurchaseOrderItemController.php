@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Procurement\ListPurchaseOrderItemRequest;
 use App\Http\Requests\Procurement\StorePurchaseOrderItemRequest;
 use App\Http\Requests\Procurement\UpdatePurchaseOrderItemRequest;
 use App\Http\Resources\PurchaseOrderItemResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class PurchaseOrderItemController extends Controller
 {
-    public function __construct(private readonly PurchaseOrderItemService $service)
-    {
-    }
+    public function __construct(private readonly PurchaseOrderItemService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListPurchaseOrderItemRequest $request): JsonResponse
     {
         $this->authorize('viewAny', PurchaseOrderItem::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => PurchaseOrderItemResource::collection($paginator->items()),

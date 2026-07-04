@@ -31,10 +31,10 @@ class RfqTest extends TestCase
         $prSeq++;
 
         return PurchaseRequest::create([
-            'requester_id'         => $user->id,
+            'requester_id' => $user->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => "Test PR #{$prSeq}",
-            'status'               => 'pr_approved',
+            'purpose' => "Test PR #{$prSeq}",
+            'status' => 'pr_approved',
         ]);
     }
 
@@ -45,9 +45,9 @@ class RfqTest extends TestCase
 
         return Rfq::create([
             'purchase_request_id' => $pr->id,
-            'prepared_by_id'      => $user->id,
-            'rfq_number'          => sprintf('RFQ-%d-%05d', now()->year, $seq),
-            'status'              => 'draft',
+            'prepared_by_id' => $user->id,
+            'rfq_number' => sprintf('RFQ-%d-%05d', now()->year, $seq),
+            'status' => 'draft',
         ]);
     }
 
@@ -77,6 +77,38 @@ class RfqTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $officer = $this->procurementOfficer();
+        $prA = $this->createPurchaseRequest($officer);
+        $prB = $this->createPurchaseRequest($officer);
+        $rfqA = $this->createRfq($prA, $officer);
+        $rfqB = $this->createRfq($prB, $officer);
+        $rfqB->forceFill(['status' => 'signed'])->save();
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/rfqs?status=signed');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertEquals('signed', $response->json('data.0.status'));
+    }
+
+    public function test_index_filters_by_purchase_request_id(): void
+    {
+        $officer = $this->procurementOfficer();
+        $prA = $this->createPurchaseRequest($officer);
+        $prB = $this->createPurchaseRequest($officer);
+        $this->createRfq($prA, $officer);
+        $this->createRfq($prB, $officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/rfqs?purchase_request_id={$prA->id}");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/rfqs — store
     // -------------------------------------------------------------------------
@@ -84,12 +116,12 @@ class RfqTest extends TestCase
     public function test_store_creates_rfq(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
+        $pr = $this->createPurchaseRequest($officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/rfqs', [
                 'purchase_request_id' => $pr->id,
-                'prepared_by_id'      => $officer->id,
+                'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(201)
             ->assertJsonPath('errors', null);
@@ -109,13 +141,13 @@ class RfqTest extends TestCase
     public function test_store_returns_422_when_pr_already_has_rfq(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
+        $pr = $this->createPurchaseRequest($officer);
         $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/rfqs', [
                 'purchase_request_id' => $pr->id,
-                'prepared_by_id'      => $officer->id,
+                'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(422)
             ->assertJsonStructure(['errors' => ['purchase_request_id']]);
@@ -128,8 +160,8 @@ class RfqTest extends TestCase
     public function test_show_returns_rfq(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $rfq     = $this->createRfq($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->getJson("/api/v1/rfqs/{$rfq->id}")
@@ -154,8 +186,8 @@ class RfqTest extends TestCase
     public function test_update_modifies_rfq(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $rfq     = $this->createRfq($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->patchJson("/api/v1/rfqs/{$rfq->id}", [
@@ -172,8 +204,8 @@ class RfqTest extends TestCase
     public function test_destroy_deletes_rfq(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $rfq     = $this->createRfq($pr, $officer);
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
 
         $this->actingAs($officer, 'sanctum')
             ->deleteJson("/api/v1/rfqs/{$rfq->id}")
@@ -190,13 +222,13 @@ class RfqTest extends TestCase
     public function test_rfq_number_is_auto_generated_on_create(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer);
-        $year    = now()->year;
+        $pr = $this->createPurchaseRequest($officer);
+        $year = now()->year;
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/rfqs', [
                 'purchase_request_id' => $pr->id,
-                'prepared_by_id'      => $officer->id,
+                'prepared_by_id' => $officer->id,
             ]);
 
         $response->assertStatus(201);

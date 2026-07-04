@@ -28,9 +28,9 @@ class CategoryTest extends TestCase
     private function createCategory(string $name = 'Test Category'): Category
     {
         return Category::create([
-            'name'        => $name,
+            'name' => $name,
             'description' => null,
-            'is_active'   => true,
+            'is_active' => true,
         ]);
     }
 
@@ -60,6 +60,52 @@ class CategoryTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_search_returns_matching_categories(): void
+    {
+        $user = $this->requester();
+        $this->createCategory('Office Supplies');
+        $this->createCategory('IT Equipment');
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/categories?search=office');
+
+        $response->assertStatus(200);
+
+        foreach ($response->json('data') as $item) {
+            $this->assertStringContainsStringIgnoringCase('office', $item['name']);
+        }
+    }
+
+    public function test_index_filters_by_is_active_returns_active_only(): void
+    {
+        $user = $this->requester();
+        Category::create(['name' => 'Active Cat', 'is_active' => true]);
+        Category::create(['name' => 'Inactive Cat', 'is_active' => false]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/categories?is_active=1');
+
+        $response->assertStatus(200);
+
+        foreach ($response->json('data') as $item) {
+            $this->assertTrue($item['is_active']);
+        }
+    }
+
+    public function test_index_filters_by_is_active_returns_inactive_only(): void
+    {
+        $user = $this->requester();
+        Category::create(['name' => 'Active Cat', 'is_active' => true]);
+        Category::create(['name' => 'Inactive Cat', 'is_active' => false]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/categories?is_active=0');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertEquals('Inactive Cat', $response->json('data.0.name'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/categories — store
     // -------------------------------------------------------------------------
@@ -70,7 +116,7 @@ class CategoryTest extends TestCase
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/categories', [
-                'name'      => 'Office Supplies',
+                'name' => 'Office Supplies',
                 'is_active' => true,
             ])
             ->assertStatus(201)

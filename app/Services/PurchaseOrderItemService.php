@@ -10,9 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 final class PurchaseOrderItemService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return PurchaseOrderItem::latest()->paginate(15);
+        return PurchaseOrderItem::query()
+            ->when($filters['purchase_order_id'] ?? null, fn ($q, $v) => $q->where('purchase_order_id', $v))
+            ->when($filters['pr_item_id'] ?? null, fn ($q, $v) => $q->where('pr_item_id', $v))
+            ->latest()
+            ->paginate(15);
     }
 
     public function store(array $validated): PurchaseOrderItem
@@ -31,6 +35,8 @@ final class PurchaseOrderItemService
 
     public function destroy(PurchaseOrderItem $item): void
     {
-        DB::transaction(function () use ($item): void { $item->delete(); });
+        DB::transaction(function () use ($item): void {
+            $item->delete();
+        });
     }
 }

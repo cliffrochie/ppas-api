@@ -11,12 +11,19 @@ use Illuminate\Support\Facades\DB;
 
 final class PurchaseOrderService
 {
-    public function list(User $user): LengthAwarePaginator
+    public function list(User $user, array $filters = []): LengthAwarePaginator
     {
-        // PO list access is not role-scoped — all authorised roles see the full list.
-        // The User parameter is accepted for consistency with PurchaseRequestService
-        // and to allow role-based scoping to be added here without a signature change.
         return PurchaseOrder::with(['preparedBy', 'purchaseRequest'])
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
+                fn ($q) => $q->where('po_number', 'like', "%{$v}%")
+                    ->orWhere('supplier_name', 'like', "%{$v}%")
+            ))
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
+            ->when($filters['supplier_id'] ?? null, fn ($q, $v) => $q->where('supplier_id', $v))
+            ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('delivery_date', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('delivery_date', '<=', $v))
             ->latest()
             ->paginate(15);
     }
@@ -47,7 +54,9 @@ final class PurchaseOrderService
 
     public function destroy(PurchaseOrder $purchaseOrder): void
     {
-        DB::transaction(function () use ($purchaseOrder): void { $purchaseOrder->delete(); });
+        DB::transaction(function () use ($purchaseOrder): void {
+            $purchaseOrder->delete();
+        });
     }
 
     private function generatePoNumber(): string

@@ -10,9 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 final class CategoryService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return Category::orderBy('name')->paginate(15);
+        return Category::query()
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('name', 'like', "%{$v}%"))
+            ->when(array_key_exists('is_active', $filters), fn ($q) => $q->where('is_active', $filters['is_active']))
+            ->orderBy('name')
+            ->paginate(15);
     }
 
     public function store(array $validated): Category
@@ -31,6 +35,8 @@ final class CategoryService
 
     public function destroy(Category $category): void
     {
-        DB::transaction(function () use ($category): void { $category->delete(); });
+        DB::transaction(function () use ($category): void {
+            $category->delete();
+        });
     }
 }

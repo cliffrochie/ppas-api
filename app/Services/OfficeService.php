@@ -10,9 +10,14 @@ use Illuminate\Support\Facades\DB;
 
 final class OfficeService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return Office::orderBy('name')->paginate(15);
+        return Office::query()
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
+                fn ($q) => $q->where('name', 'like', "%{$v}%")->orWhere('code', 'like', "%{$v}%")
+            ))
+            ->orderBy('name')
+            ->paginate(15);
     }
 
     public function store(array $validated): Office
@@ -31,6 +36,8 @@ final class OfficeService
 
     public function destroy(Office $office): void
     {
-        DB::transaction(function () use ($office): void { $office->delete(); });
+        DB::transaction(function () use ($office): void {
+            $office->delete();
+        });
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Resolution;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Resolution\ListNoticeOfAwardRequest;
 use App\Http\Requests\Resolution\StoreNoticeOfAwardRequest;
 use App\Http\Requests\Resolution\UpdateNoticeOfAwardRequest;
 use App\Http\Resources\NoticeOfAwardResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class NoticeOfAwardController extends Controller
 {
-    public function __construct(private readonly NoticeOfAwardService $service)
-    {
-    }
+    public function __construct(private readonly NoticeOfAwardService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListNoticeOfAwardRequest $request): JsonResponse
     {
         $this->authorize('viewAny', NoticeOfAward::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => NoticeOfAwardResource::collection($paginator->items()),

@@ -10,9 +10,17 @@ use Illuminate\Support\Facades\DB;
 
 final class UserService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
         return User::with(['role', 'office'])
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
+                fn ($q) => $q->where('first_name', 'like', "%{$v}%")
+                    ->orWhere('last_name', 'like', "%{$v}%")
+                    ->orWhere('email', 'like', "%{$v}%")
+            ))
+            ->when($filters['role_id'] ?? null, fn ($q, $v) => $q->where('role_id', $v))
+            ->when($filters['office_id'] ?? null, fn ($q, $v) => $q->where('office_id', $v))
+            ->when(array_key_exists('is_active', $filters), fn ($q) => $q->where('is_active', $filters['is_active']))
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->paginate(15);
@@ -39,6 +47,8 @@ final class UserService
 
     public function destroy(User $user): void
     {
-        DB::transaction(function () use ($user): void { $user->delete(); });
+        DB::transaction(function () use ($user): void {
+            $user->delete();
+        });
     }
 }

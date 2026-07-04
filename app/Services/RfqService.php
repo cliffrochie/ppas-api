@@ -10,9 +10,15 @@ use Illuminate\Support\Facades\DB;
 
 final class RfqService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
         return Rfq::with(['preparedBy', 'purchaseRequest'])
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('rfq_number', 'like', "%{$v}%"))
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
+            ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('deadline', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('deadline', '<=', $v))
             ->latest()
             ->paginate(15);
     }
@@ -44,7 +50,8 @@ final class RfqService
     public function destroy(Rfq $rfq): void
     {
         DB::transaction(function () use ($rfq): void {
-            $rfq->delete(); });
+            $rfq->delete();
+        });
     }
 
     private function generateRfqNumber(): string

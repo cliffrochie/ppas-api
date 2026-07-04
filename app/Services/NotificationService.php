@@ -12,10 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 final class NotificationService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        // Only return notifications belonging to the authenticated user.
         return Notification::where('user_id', auth()->id())
+            ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
+            ->when(array_key_exists('is_read', $filters), fn ($q) => $q->where('is_read', $filters['is_read']))
+            ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
             ->latest()
             ->paginate(15);
     }
@@ -57,11 +59,11 @@ final class NotificationService
         }
 
         $recipientIds = match ($routing['audience']) {
-            'role'      => User::whereHas('role', fn ($q) => $q->where('name', $routing['role']))
-                               ->pluck('id')
-                               ->toArray(),
+            'role' => User::whereHas('role', fn ($q) => $q->where('name', $routing['role']))
+                ->pluck('id')
+                ->toArray(),
             'requester' => [$purchaseRequest->requester_id],
-            default     => [],
+            default => [],
         };
 
         foreach ($recipientIds as $userId) {
@@ -71,12 +73,12 @@ final class NotificationService
             }
 
             Notification::create([
-                'user_id'             => $userId,
+                'user_id' => $userId,
                 'purchase_request_id' => $purchaseRequest->id,
-                'type'                => $routing['type'],
-                'title'               => $routing['title'],
-                'message'             => $routing['message'],
-                'is_read'             => false,
+                'type' => $routing['type'],
+                'title' => $routing['title'],
+                'message' => $routing['message'],
+                'is_read' => false,
             ]);
         }
     }
@@ -92,72 +94,72 @@ final class NotificationService
         return match ($toStatus) {
             'submitted' => [
                 'audience' => 'role',
-                'role'     => 'procurement_officer',
-                'type'     => 'pr_submitted',
-                'title'    => 'New Request Submitted',
-                'message'  => 'A new procurement request has been submitted and is awaiting BAC Secretariat review.',
+                'role' => 'procurement_officer',
+                'type' => 'pr_submitted',
+                'title' => 'New Request Submitted',
+                'message' => 'A new procurement request has been submitted and is awaiting BAC Secretariat review.',
             ],
             'under_review' => [
                 'audience' => 'requester',
-                'type'     => 'pr_under_review',
-                'title'    => 'Request Under Review',
-                'message'  => 'Your request is now under review by the BAC Secretariat.',
+                'type' => 'pr_under_review',
+                'title' => 'Request Under Review',
+                'message' => 'Your request is now under review by the BAC Secretariat.',
             ],
             'returned' => [
                 'audience' => 'requester',
-                'type'     => 'pr_returned',
-                'title'    => 'Request Returned',
-                'message'  => 'Your request has been returned. Please review the remarks and resubmit.',
+                'type' => 'pr_returned',
+                'title' => 'Request Returned',
+                'message' => 'Your request has been returned. Please review the remarks and resubmit.',
             ],
             'for_budget_approval' => [
                 'audience' => 'role',
-                'role'     => 'budget_officer',
-                'type'     => 'pr_for_budget',
-                'title'    => 'Request Awaiting Budget Approval',
-                'message'  => 'A procurement request has been forwarded for your budget approval.',
+                'role' => 'budget_officer',
+                'type' => 'pr_for_budget',
+                'title' => 'Request Awaiting Budget Approval',
+                'message' => 'A procurement request has been forwarded for your budget approval.',
             ],
             'disapproved' => [
                 'audience' => 'requester',
-                'type'     => 'pr_disapproved',
-                'title'    => 'Request Disapproved',
-                'message'  => 'Your procurement request has been disapproved by the Budget Officer.',
+                'type' => 'pr_disapproved',
+                'title' => 'Request Disapproved',
+                'message' => 'Your procurement request has been disapproved by the Budget Officer.',
             ],
             'budget_approved' => [
                 'audience' => 'requester',
-                'type'     => 'pr_budget_approved',
-                'title'    => 'Request Budget-Approved',
-                'message'  => 'Your procurement request has been approved by the Budget Officer.',
+                'type' => 'pr_budget_approved',
+                'title' => 'Request Budget-Approved',
+                'message' => 'Your procurement request has been approved by the Budget Officer.',
             ],
             'forwarded_to_ppu' => [
                 'audience' => 'role',
-                'role'     => 'procurement_officer',
-                'type'     => 'pr_forwarded_to_ppu',
-                'title'    => 'Request Forwarded to PPU',
-                'message'  => 'A budget-approved request is ready for Purchase Request preparation.',
+                'role' => 'procurement_officer',
+                'type' => 'pr_forwarded_to_ppu',
+                'title' => 'Request Forwarded to PPU',
+                'message' => 'A budget-approved request is ready for Purchase Request preparation.',
             ],
             'pr_prepared' => [
                 'audience' => 'requester',
-                'type'     => 'pr_prepared',
-                'title'    => 'Purchase Request Prepared',
-                'message'  => 'Your Purchase Request has been assigned a PR number and is being routed for signatures.',
+                'type' => 'pr_prepared',
+                'title' => 'Purchase Request Prepared',
+                'message' => 'Your Purchase Request has been assigned a PR number and is being routed for signatures.',
             ],
             'pr_approved' => [
                 'audience' => 'requester',
-                'type'     => 'pr_approved',
-                'title'    => 'Purchase Request Approved',
-                'message'  => 'Your Purchase Request has been signed and approved.',
+                'type' => 'pr_approved',
+                'title' => 'Purchase Request Approved',
+                'message' => 'Your Purchase Request has been signed and approved.',
             ],
             'po_prepared' => [
                 'audience' => 'requester',
-                'type'     => 'po_generated',
-                'title'    => 'Purchase Order Prepared',
-                'message'  => 'A Purchase Order has been generated for your request.',
+                'type' => 'po_generated',
+                'title' => 'Purchase Order Prepared',
+                'message' => 'A Purchase Order has been generated for your request.',
             ],
             'completed' => [
                 'audience' => 'requester',
-                'type'     => 'pr_completed',
-                'title'    => 'Request Completed',
-                'message'  => 'Your procurement request has been completed successfully.',
+                'type' => 'pr_completed',
+                'title' => 'Request Completed',
+                'message' => 'Your procurement request has been completed successfully.',
             ],
             // Intermediate canvassing/resolution stages: no end-user notification needed.
             default => null,

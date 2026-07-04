@@ -10,9 +10,16 @@ use Illuminate\Support\Facades\DB;
 
 final class NoticeOfAwardService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
         return NoticeOfAward::with(['bacResolution'])
+            ->when($filters['bac_resolution_id'] ?? null, fn ($q, $v) => $q->where('bac_resolution_id', $v))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
+                fn ($q) => $q->where('awarded_supplier', 'like', "%{$v}%")
+                    ->orWhere('noa_number', 'like', "%{$v}%")
+            ))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '<=', $v))
             ->latest()
             ->paginate(15);
     }
@@ -38,6 +45,8 @@ final class NoticeOfAwardService
 
     public function destroy(NoticeOfAward $noa): void
     {
-        DB::transaction(function () use ($noa): void { $noa->delete(); });
+        DB::transaction(function () use ($noa): void {
+            $noa->delete();
+        });
     }
 }

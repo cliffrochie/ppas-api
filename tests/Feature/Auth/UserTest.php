@@ -49,6 +49,58 @@ class UserTest extends TestCase
             ]);
     }
 
+    public function test_index_filters_by_search_matches_name(): void
+    {
+        $user = $this->requester();
+        $role = Role::where('name', 'requester')->firstOrFail();
+        User::factory()->create(['first_name' => 'Uniquename', 'last_name' => 'Smith', 'role_id' => $role->id]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/users?search=uniquename');
+
+        $response->assertStatus(200);
+
+        $names = array_map(fn ($u) => strtolower($u['first_name'].' '.$u['last_name']), $response->json('data'));
+        foreach ($names as $name) {
+            $this->assertStringContainsString('uniquename', $name);
+        }
+    }
+
+    public function test_index_filters_by_role_id(): void
+    {
+        $user = $this->requester();
+        $requesterRole = Role::where('name', 'requester')->firstOrFail();
+        $officerRole = Role::where('name', 'procurement_officer')->firstOrFail();
+
+        User::factory()->create(['role_id' => $requesterRole->id]);
+        User::factory()->create(['role_id' => $officerRole->id]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/users?role_id={$requesterRole->id}");
+
+        $response->assertStatus(200);
+
+        foreach ($response->json('data') as $item) {
+            $this->assertEquals($requesterRole->id, $item['role']['id']);
+        }
+    }
+
+    public function test_index_filters_by_is_active(): void
+    {
+        $user = $this->requester();
+        $role = Role::where('name', 'requester')->firstOrFail();
+        User::factory()->create(['role_id' => $role->id, 'is_active' => false]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/users?is_active=0');
+
+        $response->assertStatus(200);
+
+        foreach ($response->json('data') as $item) {
+            $this->assertFalse($item['is_active']);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/users — store
     // -------------------------------------------------------------------------
@@ -60,12 +112,12 @@ class UserTest extends TestCase
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/users', [
-                'first_name'            => 'John',
-                'last_name'             => 'Doe',
-                'email'                 => 'new.user@example.com',
-                'password'              => 'password123',
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'email' => 'new.user@example.com',
+                'password' => 'password123',
                 'password_confirmation' => 'password123',
-                'role_id'               => $requesterRole->id,
+                'role_id' => $requesterRole->id,
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.email', 'new.user@example.com')
@@ -79,12 +131,12 @@ class UserTest extends TestCase
 
         $this->actingAs($requester, 'sanctum')
             ->postJson('/api/v1/users', [
-                'first_name'            => 'John',
-                'last_name'             => 'Doe',
-                'email'                 => 'blocked@example.com',
-                'password'              => 'password123',
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'email' => 'blocked@example.com',
+                'password' => 'password123',
                 'password_confirmation' => 'password123',
-                'role_id'               => $requesterRole->id,
+                'role_id' => $requesterRole->id,
             ])
             ->assertStatus(403);
     }
@@ -96,8 +148,8 @@ class UserTest extends TestCase
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/users', [
                 'first_name' => 'John',
-                'last_name'  => 'Doe',
-                'password'   => 'password123',
+                'last_name' => 'Doe',
+                'password' => 'password123',
                 'password_confirmation' => 'password123',
             ])
             ->assertStatus(422)

@@ -25,7 +25,7 @@ class PurchaseRequestTest extends TestCase
         $office = $officeId ?? Office::where('code', 'ORM')->value('id');
 
         return User::factory()->create([
-            'role_id'   => $role->id,
+            'role_id' => $role->id,
             'office_id' => $office,
         ]);
     }
@@ -45,10 +45,10 @@ class PurchaseRequestTest extends TestCase
     private function createPurchaseRequest(User $requester, array $attributes = []): PurchaseRequest
     {
         return PurchaseRequest::create(array_merge([
-            'requester_id'         => $requester->id,
+            'requester_id' => $requester->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => 'Test procurement purpose',
-            'status'               => 'draft',
+            'purpose' => 'Test procurement purpose',
+            'status' => 'draft',
         ], $attributes));
     }
 
@@ -105,7 +105,7 @@ class PurchaseRequestTest extends TestCase
 
     public function test_officer_does_not_see_draft_prs(): void
     {
-        $officer   = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $requester = $this->requester();
         $this->createPurchaseRequest($requester, ['status' => 'draft']);
 
@@ -118,7 +118,7 @@ class PurchaseRequestTest extends TestCase
 
     public function test_officer_sees_submitted_prs_from_all_requesters(): void
     {
-        $officer    = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $requesterA = $this->requester();
         $requesterB = $this->requester();
         $this->createPurchaseRequest($requesterA, ['status' => 'submitted']);
@@ -134,7 +134,7 @@ class PurchaseRequestTest extends TestCase
     public function test_budget_officer_does_not_see_draft_prs(): void
     {
         $budgetOfficer = $this->budgetOfficer();
-        $requester     = $this->requester();
+        $requester = $this->requester();
         $this->createPurchaseRequest($requester, ['status' => 'draft']);
 
         $response = $this->actingAs($budgetOfficer, 'sanctum')
@@ -147,11 +147,58 @@ class PurchaseRequestTest extends TestCase
     public function test_budget_officer_sees_submitted_prs(): void
     {
         $budgetOfficer = $this->budgetOfficer();
-        $requester     = $this->requester();
+        $requester = $this->requester();
         $this->createPurchaseRequest($requester, ['status' => 'for_budget_approval']);
 
         $response = $this->actingAs($budgetOfficer, 'sanctum')
             ->getJson('/api/v1/purchase-requests');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_index_filters_by_status_for_officer(): void
+    {
+        $officer = $this->procurementOfficer();
+        $requester = $this->requester();
+        $this->createPurchaseRequest($requester, ['status' => 'submitted']);
+        $this->createPurchaseRequest($requester, ['status' => 'under_review']);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/purchase-requests?status=submitted');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertEquals('submitted', $response->json('data.0.status'));
+    }
+
+    public function test_index_filters_by_search_on_purpose_for_officer(): void
+    {
+        $officer = $this->procurementOfficer();
+        $requester = $this->requester();
+        $this->createPurchaseRequest($requester, ['status' => 'submitted', 'purpose' => 'Unique keyboard procurement']);
+        $this->createPurchaseRequest($requester, ['status' => 'submitted', 'purpose' => 'Office chairs purchase']);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/purchase-requests?search=keyboard');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertStringContainsStringIgnoringCase('keyboard', $response->json('data.0.purpose'));
+    }
+
+    public function test_index_filters_by_requesting_office_id_for_officer(): void
+    {
+        $officer = $this->procurementOfficer();
+        $requester = $this->requester();
+        $orm = Office::where('code', 'ORM')->firstOrFail();
+        $bac = Office::where('code', 'BAC')->firstOrFail();
+
+        $this->createPurchaseRequest($requester, ['status' => 'submitted', 'requesting_office_id' => $orm->id]);
+        $this->createPurchaseRequest($requester, ['status' => 'submitted', 'requesting_office_id' => $bac->id]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/purchase-requests?requesting_office_id={$orm->id}");
 
         $response->assertStatus(200);
         $this->assertCount(1, $response->json('data'));
@@ -168,9 +215,9 @@ class PurchaseRequestTest extends TestCase
 
         $this->actingAs($requester, 'sanctum')
             ->postJson('/api/v1/purchase-requests', [
-                'requester_id'         => $requester->id,
+                'requester_id' => $requester->id,
                 'requesting_office_id' => $officeId,
-                'purpose'              => 'Purchase office supplies',
+                'purpose' => 'Purchase office supplies',
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.purpose', 'Purchase office supplies')
@@ -185,9 +232,9 @@ class PurchaseRequestTest extends TestCase
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-requests', [
-                'requester_id'         => $requester->id,
+                'requester_id' => $requester->id,
                 'requesting_office_id' => $officeId,
-                'purpose'              => 'Procurement officer submission',
+                'purpose' => 'Procurement officer submission',
             ])
             ->assertStatus(201)
             ->assertJsonPath('errors', null);
@@ -211,10 +258,10 @@ class PurchaseRequestTest extends TestCase
 
         $response = $this->actingAs($requester, 'sanctum')
             ->postJson('/api/v1/purchase-requests', [
-                'requester_id'         => $requester->id,
+                'requester_id' => $requester->id,
                 'requesting_office_id' => $officeId,
-                'purpose'              => 'Test',
-                'pr_number'            => 'HACKED-PR-001', // must be ignored
+                'purpose' => 'Test',
+                'pr_number' => 'HACKED-PR-001', // must be ignored
             ]);
 
         $response->assertStatus(201);
@@ -343,13 +390,13 @@ class PurchaseRequestTest extends TestCase
     {
         // rf_number must NOT be generated at draft creation — only at draft → submitted.
         $requester = $this->requester();
-        $officeId  = $this->officeId();
+        $officeId = $this->officeId();
 
         $response = $this->actingAs($requester, 'sanctum')
             ->postJson('/api/v1/purchase-requests', [
-                'requester_id'         => $requester->id,
+                'requester_id' => $requester->id,
                 'requesting_office_id' => $officeId,
-                'purpose'              => 'Test RF number is null on store',
+                'purpose' => 'Test RF number is null on store',
             ]);
 
         $response->assertStatus(201);
@@ -360,8 +407,8 @@ class PurchaseRequestTest extends TestCase
     {
         // rf_number is generated when the Requester transitions draft → submitted.
         $requester = $this->requester();
-        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
-        $year      = now()->year;
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+        $year = now()->year;
 
         $this->assertNull($pr->rf_number);
 
@@ -378,7 +425,7 @@ class PurchaseRequestTest extends TestCase
     {
         // When a returned request is resubmitted, the original RF # must be kept.
         $requester = $this->requester();
-        $year      = now()->year;
+        $year = now()->year;
 
         // rf_number is not in #[Fillable] so it cannot be set via create().
         // Use forceFill after creation to seed the value directly.
@@ -398,7 +445,7 @@ class PurchaseRequestTest extends TestCase
     {
         // pr_number must NOT be generated at draft → submitted — only at forwarded_to_ppu → pr_prepared.
         $requester = $this->requester();
-        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
 
         $response = $this->actingAs($requester, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
@@ -413,8 +460,8 @@ class PurchaseRequestTest extends TestCase
     {
         // pr_number is generated when PPU transitions forwarded_to_ppu → pr_prepared.
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer, ['status' => 'forwarded_to_ppu']);
-        $year    = now()->year;
+        $pr = $this->createPurchaseRequest($officer, ['status' => 'forwarded_to_ppu']);
+        $year = now()->year;
 
         $this->assertNull($pr->pr_number);
 
@@ -498,7 +545,7 @@ class PurchaseRequestTest extends TestCase
     public function test_status_history_row_written_on_transition(): void
     {
         $requester = $this->requester();
-        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
 
         $this->actingAs($requester, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
@@ -508,49 +555,49 @@ class PurchaseRequestTest extends TestCase
 
         $this->assertDatabaseHas('pr_status_histories', [
             'purchase_request_id' => $pr->id,
-            'actor_id'            => $requester->id,
-            'from_status'         => 'draft',
-            'to_status'           => 'submitted',
+            'actor_id' => $requester->id,
+            'from_status' => 'draft',
+            'to_status' => 'submitted',
         ]);
     }
 
     public function test_alobs_number_captured_in_status_history_on_budget_approval(): void
     {
         $budgetOfficer = $this->budgetOfficer();
-        $pr            = $this->createPurchaseRequest($budgetOfficer, ['status' => 'for_budget_approval']);
+        $pr = $this->createPurchaseRequest($budgetOfficer, ['status' => 'for_budget_approval']);
 
         $this->actingAs($budgetOfficer, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
-                'status'       => 'budget_approved',
+                'status' => 'budget_approved',
                 'alobs_number' => 'ALOBS-2026-001',
             ])
             ->assertStatus(200);
 
         $this->assertDatabaseHas('pr_status_histories', [
             'purchase_request_id' => $pr->id,
-            'from_status'         => 'for_budget_approval',
-            'to_status'           => 'budget_approved',
-            'alobs_number'        => 'ALOBS-2026-001',
+            'from_status' => 'for_budget_approval',
+            'to_status' => 'budget_approved',
+            'alobs_number' => 'ALOBS-2026-001',
         ]);
     }
 
     public function test_remarks_captured_in_status_history_on_return(): void
     {
         $officer = $this->procurementOfficer();
-        $pr      = $this->createPurchaseRequest($officer, ['status' => 'submitted']);
+        $pr = $this->createPurchaseRequest($officer, ['status' => 'submitted']);
 
         $this->actingAs($officer, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
-                'status'  => 'returned',
+                'status' => 'returned',
                 'remarks' => 'Missing PPMP attachment.',
             ])
             ->assertStatus(200);
 
         $this->assertDatabaseHas('pr_status_histories', [
             'purchase_request_id' => $pr->id,
-            'from_status'         => 'submitted',
-            'to_status'           => 'returned',
-            'remarks'             => 'Missing PPMP attachment.',
+            'from_status' => 'submitted',
+            'to_status' => 'returned',
+            'remarks' => 'Missing PPMP attachment.',
         ]);
     }
 
@@ -560,9 +607,9 @@ class PurchaseRequestTest extends TestCase
 
     public function test_notification_created_for_procurement_officer_on_submission(): void
     {
-        $officer   = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $requester = $this->requester();
-        $pr        = $this->createPurchaseRequest($requester, ['status' => 'draft']);
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
 
         $this->actingAs($requester, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
@@ -571,29 +618,29 @@ class PurchaseRequestTest extends TestCase
             ->assertStatus(200);
 
         $this->assertDatabaseHas('notifications', [
-            'user_id'             => $officer->id,
+            'user_id' => $officer->id,
             'purchase_request_id' => $pr->id,
-            'type'                => 'pr_submitted',
+            'type' => 'pr_submitted',
         ]);
     }
 
     public function test_notification_created_for_requester_on_return(): void
     {
-        $officer   = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $requester = $this->requester();
-        $pr        = $this->createPurchaseRequest($requester, ['status' => 'submitted']);
+        $pr = $this->createPurchaseRequest($requester, ['status' => 'submitted']);
 
         $this->actingAs($officer, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
-                'status'  => 'returned',
+                'status' => 'returned',
                 'remarks' => 'Incomplete submission.',
             ])
             ->assertStatus(200);
 
         $this->assertDatabaseHas('notifications', [
-            'user_id'             => $requester->id,
+            'user_id' => $requester->id,
             'purchase_request_id' => $pr->id,
-            'type'                => 'pr_returned',
+            'type' => 'pr_returned',
         ]);
     }
 
@@ -602,8 +649,8 @@ class PurchaseRequestTest extends TestCase
         // When the requester submits, they should NOT receive a notification
         // directed at the requester role (they triggered the action themselves).
         $requester = $this->requester();
-        $pr        = $this->createPurchaseRequest($requester, [
-            'status'    => 'budget_approved',
+        $pr = $this->createPurchaseRequest($requester, [
+            'status' => 'budget_approved',
             'rf_number' => 'RF-2026-00001',
         ]);
 
@@ -620,7 +667,7 @@ class PurchaseRequestTest extends TestCase
         // budget_officer must NOT appear in notifications for this transition
         // (they triggered it; the notification goes to procurement_officers).
         $this->assertDatabaseMissing('notifications', [
-            'user_id'             => $budgetOfficer->id,
+            'user_id' => $budgetOfficer->id,
             'purchase_request_id' => $pr->id,
         ]);
     }
@@ -636,15 +683,15 @@ class PurchaseRequestTest extends TestCase
 
         $this->actingAs($requester, 'sanctum')
             ->postJson('/api/v1/purchase-requests', [
-                'requester_id'         => $requester->id,
+                'requester_id' => $requester->id,
                 'requesting_office_id' => $officeId,
-                'purpose'              => 'Audit creation test',
+                'purpose' => 'Audit creation test',
             ])
             ->assertStatus(201);
 
         $this->assertDatabaseHas('audit_logs', [
             'auditable_type' => PurchaseRequest::class,
-            'event'          => 'created',
+            'event' => 'created',
         ]);
     }
 
@@ -661,11 +708,11 @@ class PurchaseRequestTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', [
             'auditable_type' => PurchaseRequest::class,
-            'auditable_id'   => $pr->id,
-            'event'          => 'updated',
-            'field'          => 'purpose',
-            'old_value'      => 'Original purpose',
-            'new_value'      => 'Updated purpose',
+            'auditable_id' => $pr->id,
+            'event' => 'updated',
+            'field' => 'purpose',
+            'old_value' => 'Original purpose',
+            'new_value' => 'Updated purpose',
         ]);
     }
 
@@ -682,11 +729,11 @@ class PurchaseRequestTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', [
             'auditable_type' => PurchaseRequest::class,
-            'auditable_id'   => $pr->id,
-            'event'          => 'status_changed',
-            'field'          => 'status',
-            'old_value'      => 'draft',
-            'new_value'      => 'submitted',
+            'auditable_id' => $pr->id,
+            'event' => 'status_changed',
+            'field' => 'status',
+            'old_value' => 'draft',
+            'new_value' => 'submitted',
         ]);
     }
 
@@ -702,11 +749,11 @@ class PurchaseRequestTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', [
             'auditable_type' => PurchaseRequest::class,
-            'auditable_id'   => $prId,
-            'event'          => 'deleted',
-            'field'          => 'id',
-            'old_value'      => (string) $prId,
-            'new_value'      => null,
+            'auditable_id' => $prId,
+            'event' => 'deleted',
+            'field' => 'id',
+            'old_value' => (string) $prId,
+            'new_value' => null,
         ]);
     }
 

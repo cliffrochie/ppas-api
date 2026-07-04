@@ -10,9 +10,12 @@ use Illuminate\Support\Facades\DB;
 
 final class RoleService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return Role::orderBy('name')->paginate(15);
+        return Role::query()
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('name', 'like', "%{$v}%"))
+            ->orderBy('name')
+            ->paginate(15);
     }
 
     public function store(array $validated): Role
@@ -31,6 +34,8 @@ final class RoleService
 
     public function destroy(Role $role): void
     {
-        DB::transaction(function () use ($role): void { $role->delete(); });
+        DB::transaction(function () use ($role): void {
+            $role->delete();
+        });
     }
 }

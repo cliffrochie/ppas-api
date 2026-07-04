@@ -51,6 +51,44 @@ class OfficeTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_search_matches_name(): void
+    {
+        $user = $this->requester();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/offices?search=Finance');
+
+        $response->assertStatus(200);
+
+        foreach ($response->json('data') as $item) {
+            $nameOrCode = strtolower($item['name']).strtolower($item['code'] ?? '');
+            $this->assertStringContainsString('finance', $nameOrCode);
+        }
+    }
+
+    public function test_index_filters_by_search_matches_code(): void
+    {
+        $user = $this->requester();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/offices?search=BAC');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertEquals('Bids and Awards Committee', $response->json('data.0.name'));
+    }
+
+    public function test_index_filters_by_search_returns_empty_when_no_match(): void
+    {
+        $user = $this->requester();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/offices?search=nonexistent_xyz_office');
+
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/offices — store
     // -------------------------------------------------------------------------

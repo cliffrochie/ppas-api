@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\Resolution;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Resolution\ListBacResolutionRequest;
 use App\Http\Requests\Resolution\StoreBacResolutionRequest;
 use App\Http\Requests\Resolution\UpdateBacResolutionRequest;
 use App\Http\Resources\BacResolutionResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class BacResolutionController extends Controller
 {
-    public function __construct(private readonly BacResolutionService $service)
-    {
-    }
+    public function __construct(private readonly BacResolutionService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListBacResolutionRequest $request): JsonResponse
     {
         $this->authorize('viewAny', BacResolution::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => BacResolutionResource::collection($paginator->items()),

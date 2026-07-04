@@ -10,9 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 final class AbstractOfQuotationService
 {
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
         return AbstractOfQuotation::with(['preparedBy', 'rfq'])
+            ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
+            ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('recommended_supplier', 'like', "%{$v}%"))
             ->latest()
             ->paginate(15);
     }
@@ -38,6 +42,8 @@ final class AbstractOfQuotationService
 
     public function destroy(AbstractOfQuotation $abstract): void
     {
-        DB::transaction(function () use ($abstract): void { $abstract->delete(); });
+        DB::transaction(function () use ($abstract): void {
+            $abstract->delete();
+        });
     }
 }

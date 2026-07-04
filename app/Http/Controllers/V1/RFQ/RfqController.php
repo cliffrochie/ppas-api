@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\V1\RFQ;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RFQ\ListRfqRequest;
 use App\Http\Requests\RFQ\StoreRfqRequest;
 use App\Http\Requests\RFQ\UpdateRfqRequest;
 use App\Http\Resources\RfqResource;
@@ -14,15 +15,13 @@ use Illuminate\Http\JsonResponse;
 
 final class RfqController extends Controller
 {
-    public function __construct(private readonly RfqService $service)
-    {
-    }
+    public function __construct(private readonly RfqService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListRfqRequest $request): JsonResponse
     {
         $this->authorize('viewAny', Rfq::class);
 
-        $paginator = $this->service->list();
+        $paginator = $this->service->list($request->validated());
 
         return response()->json([
             'data' => RfqResource::collection($paginator->items()),

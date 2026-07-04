@@ -56,8 +56,7 @@ final class PurchaseRequestService
         private readonly Request $request,
         private readonly PrStatusHistoryService $prStatusHistoryService,
         private readonly NotificationService $notificationService,
-    ) {
-    }
+    ) {}
 
     // -------------------------------------------------------------------------
     // Internal helpers
@@ -72,7 +71,7 @@ final class PurchaseRequestService
     {
         $allowed = self::ALLOWED_TRANSITIONS[$current] ?? [];
 
-        if (!in_array($next, $allowed, true)) {
+        if (! in_array($next, $allowed, true)) {
             throw new InvalidStatusTransitionException($current, $next);
         }
     }
@@ -93,7 +92,7 @@ final class PurchaseRequestService
     // Public CRUD methods
     // -------------------------------------------------------------------------
 
-    public function list(User $user): LengthAwarePaginator
+    public function list(User $user, array $filters = []): LengthAwarePaginator
     {
         $query = PurchaseRequest::with(['requester', 'requestingOffice', 'category'])
             ->latest();
@@ -106,6 +105,20 @@ final class PurchaseRequestService
             // Drafts are private to the requester until submitted.
             $query->where('status', '!=', 'draft');
         }
+
+        $query
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
+                fn ($q) => $q->where('purpose', 'like', "%{$v}%")
+                    ->orWhere('pr_number', 'like', "%{$v}%")
+                    ->orWhere('rf_number', 'like', "%{$v}%")
+                    ->orWhere('alobs_number', 'like', "%{$v}%")
+            ))
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
+            ->when($filters['requesting_office_id'] ?? null, fn ($q, $v) => $q->where('requesting_office_id', $v))
+            ->when(array_key_exists('requires_philgeps', $filters), fn ($q) => $q->where('requires_philgeps', $filters['requires_philgeps']))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('submitted_at', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('submitted_at', '<=', $v));
 
         return $query->paginate(15);
     }
@@ -144,7 +157,7 @@ final class PurchaseRequestService
             $fromStatus = $purchaseRequest->status;
 
             $originalValues = collect(self::AUDITED_FIELDS)
-                ->mapWithKeys(fn(string $field) => [$field => $purchaseRequest->getRawOriginal($field)])
+                ->mapWithKeys(fn (string $field) => [$field => $purchaseRequest->getRawOriginal($field)])
                 ->all();
 
             // ------------------------------------------------------------------
@@ -284,8 +297,8 @@ final class PurchaseRequestService
      * Write `updated` audit rows for every changed audited field, plus a
      * dedicated `status_changed` row when the status field is among them.
      *
-     * @param array<string, mixed> $originalValues  Raw DB values before save
-     * @param array<string, mixed> $validated        Fields passed to forceFill
+     * @param  array<string, mixed>  $originalValues  Raw DB values before save
+     * @param  array<string, mixed>  $validated  Fields passed to forceFill
      */
     private function auditUpdated(
         PurchaseRequest $purchaseRequest,
@@ -318,7 +331,7 @@ final class PurchaseRequestService
             }
         }
 
-        if (!empty($updatedChanges)) {
+        if (! empty($updatedChanges)) {
             AuditLogger::logMany(
                 auditable: $purchaseRequest,
                 event: 'updated',

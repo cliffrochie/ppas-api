@@ -14,9 +14,14 @@ final class SupplierDocumentService
 {
     public function __construct(private readonly Request $request) {}
 
-    public function list(): LengthAwarePaginator
+    public function list(array $filters = []): LengthAwarePaginator
     {
         return SupplierDocument::with(['uploader'])
+            ->when($filters['supplier_id'] ?? null, fn ($q, $v) => $q->where('supplier_id', $v))
+            ->when($filters['uploader_id'] ?? null, fn ($q, $v) => $q->where('uploader_id', $v))
+            ->when($filters['mime_type'] ?? null, fn ($q, $v) => $q->where('mime_type', 'like', "%{$v}%"))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '<=', $v))
             ->orderByDesc('uploaded_at')
             ->paginate(15);
     }
@@ -43,10 +48,10 @@ final class SupplierDocumentService
                 return SupplierDocument::create([
                     'supplier_id' => $validated['supplier_id'],
                     'uploader_id' => $this->request->user()->id,
-                    'file_name'   => $file->getClientOriginalName(),
-                    'file_path'   => $path,
-                    'file_size'   => $file->getSize(),
-                    'mime_type'   => $file->getMimeType(),
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
                     'uploaded_at' => now(),
                 ]);
             });

@@ -38,20 +38,20 @@ class NotificationTest extends TestCase
         $seq++;
 
         $pr = PurchaseRequest::create([
-            'requester_id'         => $actor->id,
+            'requester_id' => $actor->id,
             'requesting_office_id' => $this->officeId(),
-            'purpose'              => "Test PR #{$seq}",
-            'status'               => 'submitted',
+            'purpose' => "Test PR #{$seq}",
+            'status' => 'submitted',
         ]);
 
         return Notification::create([
-            'user_id'             => $recipient->id,
+            'user_id' => $recipient->id,
             'purchase_request_id' => $pr->id,
-            'type'                => 'pr_status_changed',
-            'title'               => 'PR Submitted',
-            'message'             => 'A purchase request was submitted.',
-            'is_read'             => false,
-            'created_at'          => now(),
+            'type' => 'pr_status_changed',
+            'title' => 'PR Submitted',
+            'message' => 'A purchase request was submitted.',
+            'is_read' => false,
+            'created_at' => now(),
         ]);
     }
 
@@ -84,13 +84,41 @@ class NotificationTest extends TestCase
         $this->assertSame([$officer1->id], $ids);
     }
 
+    public function test_index_filters_by_is_read(): void
+    {
+        $officer = $this->procurementOfficer();
+        $actor = $this->procurementOfficer();
+        $notif = $this->createNotification($officer, $actor);
+
+        $notif->forceFill(['is_read' => true])->save();
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/notifications?is_read=0');
+
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
+    }
+
+    public function test_index_filters_by_type(): void
+    {
+        $officer = $this->procurementOfficer();
+        $actor = $this->procurementOfficer();
+        $this->createNotification($officer, $actor);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/notifications?type=pr_status_changed');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+    }
+
     // -------------------------------------------------------------------------
     // GET /api/v1/notifications/{notification} — show
     // -------------------------------------------------------------------------
 
     public function test_show_returns_own_notification(): void
     {
-        $officer      = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $notification = $this->createNotification($officer, $officer);
 
         $this->actingAs($officer, 'sanctum')
@@ -102,8 +130,8 @@ class NotificationTest extends TestCase
 
     public function test_show_returns_403_for_another_users_notification(): void
     {
-        $requester1   = $this->requester();
-        $requester2   = $this->requester();
+        $requester1 = $this->requester();
+        $requester2 = $this->requester();
         $notification = $this->createNotification($requester2, $requester1);
 
         $this->actingAs($requester1, 'sanctum')
@@ -117,7 +145,7 @@ class NotificationTest extends TestCase
 
     public function test_mark_read_sets_read_at_timestamp(): void
     {
-        $officer      = $this->procurementOfficer();
+        $officer = $this->procurementOfficer();
         $notification = $this->createNotification($officer, $officer);
 
         $this->assertNull($notification->read_at);
@@ -132,8 +160,8 @@ class NotificationTest extends TestCase
 
     public function test_mark_read_returns_403_for_another_users_notification(): void
     {
-        $requester1   = $this->requester();
-        $requester2   = $this->requester();
+        $requester1 = $this->requester();
+        $requester2 = $this->requester();
         $notification = $this->createNotification($requester2, $requester1);
 
         $this->actingAs($requester1, 'sanctum')
