@@ -179,6 +179,10 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('rfqs', RfqController::class)
             ->names('rfqs');
 
+        // Secure, authorized RFQ document download — never served from the public disk.
+        Route::get('rfqs/{rfq}/download', [RfqController::class, 'download'])
+            ->name('rfqs.download');
+
         Route::apiResource('rfq-items', RfqItemController::class)
             ->names([
                 'index' => 'rfq_items.index',
@@ -207,6 +211,10 @@ Route::prefix('v1')->group(function (): void {
                 'destroy' => 'abstracts_of_quotation.destroy',
             ]);
 
+        // Secure, authorized abstract of quotation document download.
+        Route::get('abstracts-of-quotation/{abstract_of_quotation}/download', [AbstractOfQuotationController::class, 'download'])
+            ->name('abstracts_of_quotation.download');
+
         // ---------------------------------------------------------------------
         // Resolution domain
         // ---------------------------------------------------------------------
@@ -219,6 +227,10 @@ Route::prefix('v1')->group(function (): void {
                 'destroy' => 'bac_resolutions.destroy',
             ]);
 
+        // Secure, authorized BAC resolution document download.
+        Route::get('bac-resolutions/{bacResolution}/download', [BacResolutionController::class, 'download'])
+            ->name('bac_resolutions.download');
+
         Route::apiResource('notices-of-award', NoticeOfAwardController::class)
             ->parameters(['notices-of-award' => 'notice_of_award'])
             ->names([
@@ -228,6 +240,10 @@ Route::prefix('v1')->group(function (): void {
                 'update' => 'notices_of_award.update',
                 'destroy' => 'notices_of_award.destroy',
             ]);
+
+        // Secure, authorized notice of award document download.
+        Route::get('notices-of-award/{notice_of_award}/download', [NoticeOfAwardController::class, 'download'])
+            ->name('notices_of_award.download');
 
         // ---------------------------------------------------------------------
         // Monitoring domain

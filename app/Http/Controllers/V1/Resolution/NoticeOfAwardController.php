@@ -12,6 +12,8 @@ use App\Http\Resources\NoticeOfAwardResource;
 use App\Models\NoticeOfAward;
 use App\Services\NoticeOfAwardService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class NoticeOfAwardController extends Controller
 {
@@ -82,5 +84,16 @@ final class NoticeOfAwardController extends Controller
             'message' => 'Notice of award deleted successfully.',
             'errors' => null,
         ]);
+    }
+
+    /**
+     * Serve the notice's uploaded document through an authorized download.
+     * The file is streamed from the private disk — never exposed via a public URL.
+     */
+    public function download(NoticeOfAward $noticeOfAward): StreamedResponse
+    {
+        $this->authorize('view', $noticeOfAward);
+
+        return Storage::disk('private')->download($noticeOfAward->file_path);
     }
 }

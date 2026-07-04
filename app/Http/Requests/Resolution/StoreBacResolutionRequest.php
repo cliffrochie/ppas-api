@@ -20,7 +20,8 @@ final class StoreBacResolutionRequest extends FormRequest
             'resolution_number'        => ['required', 'string', 'max:100'],
             'abstract_of_quotation_id' => ['required', 'exists:abstracts_of_quotation,id', 'unique:bac_resolutions,abstract_of_quotation_id'],
             'prepared_by_id'           => ['required', 'exists:users,id'],
-            'file_path'                => ['required', 'string', 'max:500'],
+            // file_path is derived server-side from the uploaded file — never accepted from the client.
+            'file'                     => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx'],
             'issued_at'                => ['nullable', 'date'],
         ];
     }

@@ -23,7 +23,8 @@ final class UpdateNoticeOfAwardRequest extends FormRequest
             'noa_number'       => ['sometimes', 'required', 'string', 'max:100'],
             'awarded_supplier' => ['sometimes', 'required', 'string', 'max:255'],
             'awarded_amount'   => ['sometimes', 'required', 'numeric', 'min:0'],
-            'file_path'        => ['sometimes', 'required', 'string', 'max:500'],
+            // file_path is derived server-side from the uploaded file — never accepted from the client.
+            'file'             => ['sometimes', 'required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx'],
             'issued_at'        => ['nullable', 'date'],
         ];
     }

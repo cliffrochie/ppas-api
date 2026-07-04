@@ -467,6 +467,9 @@ No `update` endpoint — delete and re-upload instead.
 | GET | `/rfqs/{id}` | Get RFQ with items |
 | PUT/PATCH | `/rfqs/{id}` | Update |
 | DELETE | `/rfqs/{id}` | Delete |
+| GET | `/rfqs/{id}/download` | Download uploaded RFQ document (404 if none uploaded) |
+
+Store/Update accept an optional `file` upload (multipart/form-data). `file_path` is never accepted from the client — it is derived server-side from the upload and excluded from the JSON response. Use the `download_url` field in `RfqResource` (null when no file has been uploaded).
 
 #### RFQ Items
 
@@ -501,8 +504,11 @@ Summary document recommending a supplier.
 | GET | `/abstracts-of-quotation/{abstract_of_quotation}` | Get |
 | PUT/PATCH | `/abstracts-of-quotation/{abstract_of_quotation}` | Update |
 | DELETE | `/abstracts-of-quotation/{abstract_of_quotation}` | Delete |
+| GET | `/abstracts-of-quotation/{abstract_of_quotation}/download` | Download uploaded document (404 if none uploaded) |
 
 > Note: The route parameter is `abstract_of_quotation` (not `id` or `abstractOfQuotation`).
+
+Store/Update accept an optional `file` upload (multipart/form-data). `file_path` is never accepted from the client — it is derived server-side from the upload and excluded from the JSON response. Use the `download_url` field in `AbstractOfQuotationResource` (null when no file has been uploaded).
 
 ---
 
@@ -517,6 +523,9 @@ Summary document recommending a supplier.
 | GET | `/bac-resolutions/{id}` | Get |
 | PUT/PATCH | `/bac-resolutions/{id}` | Update |
 | DELETE | `/bac-resolutions/{id}` | Delete |
+| GET | `/bac-resolutions/{id}/download` | Download the resolution document |
+
+Store requires a `file` upload (multipart/form-data) — `file_path` is a required DB column derived server-side from the upload; it is never accepted from the client and is excluded from the JSON response. Use the `download_url` field in `BacResolutionResource` (always present, since a file is mandatory).
 
 #### Notices of Award
 
@@ -527,8 +536,11 @@ Summary document recommending a supplier.
 | GET | `/notices-of-award/{notice_of_award}` | Get |
 | PUT/PATCH | `/notices-of-award/{notice_of_award}` | Update |
 | DELETE | `/notices-of-award/{notice_of_award}` | Delete |
+| GET | `/notices-of-award/{notice_of_award}/download` | Download the notice document |
 
 > Note: The route parameter is `notice_of_award`.
+
+Store requires a `file` upload (multipart/form-data) — same pattern as BAC Resolutions. Use the `download_url` field in `NoticeOfAwardResource` (always present, since a file is mandatory).
 
 ---
 
@@ -703,6 +715,10 @@ Private files are **never on a public URL**. The frontend must always request fi
 | Purchase Order | `GET /purchase-orders/{id}/download/purchase-order` | Blade PDF — PO document |
 | Supplier logo | `GET /suppliers/{id}/logo` | Image file |
 | Supplier document | `GET /supplier-documents/{id}/download` | Supplier document file |
+| RFQ document | `GET /rfqs/{id}/download` | User-uploaded file (404 if none uploaded) |
+| Abstract of Quotation document | `GET /abstracts-of-quotation/{abstract_of_quotation}/download` | User-uploaded file (404 if none uploaded) |
+| BAC Resolution document | `GET /bac-resolutions/{id}/download` | User-uploaded file (always present — required on create) |
+| Notice of Award document | `GET /notices-of-award/{notice_of_award}/download` | User-uploaded file (always present — required on create) |
 
 **Frontend pattern for downloads:**
 ```js
@@ -775,13 +791,14 @@ All resource shapes are defined in `app/Http/Resources/`. Relationships are lazy
   "prepared_by_id": 4,
   "deadline": "2026-07-10",
   "status": "open",
+  "download_url": "http://host/api/v1/rfqs/1/download",  // null if no file uploaded
   "prepared_by": { /* UserResource */ },
   "items": [ /* RfqItemResource[] */ ],
   "created_at": "...",
   "updated_at": "..."
 }
 ```
-> `file_path` is excluded — access RFQ files via an authorized download route.
+> `file_path` is excluded — use `download_url`, the authorized download route (null if no file has been uploaded).
 
 ### PurchaseOrderResource
 ```jsonc
@@ -857,12 +874,14 @@ All resource shapes are defined in `app/Http/Resources/`. Relationships are lazy
   "recommended_supplier": "ABC Trading Corp",
   "recommended_amount": "11800.00",
   "status": "approved",
+  "download_url": "http://host/api/v1/abstracts-of-quotation/1/download",  // null if no file uploaded
   "approved_at": "2026-07-15T10:00:00.000000Z",
   "prepared_by": { /* UserResource */ },
   "created_at": "...",
   "updated_at": "..."
 }
 ```
+> `file_path` is excluded — use `download_url` (null if no file has been uploaded).
 
 ### BacResolutionResource
 ```jsonc
@@ -871,12 +890,14 @@ All resource shapes are defined in `app/Http/Resources/`. Relationships are lazy
   "resolution_number": "BAC-2026-001",
   "abstract_of_quotation_id": 1,
   "prepared_by_id": 4,
+  "download_url": "http://host/api/v1/bac-resolutions/1/download",  // always present — file is required
   "issued_at": "2026-07-20T00:00:00.000000Z",
   "prepared_by": { /* UserResource */ },
   "created_at": "...",
   "updated_at": "..."
 }
 ```
+> `file_path` is excluded — use `download_url`.
 
 ### NoticeOfAwardResource
 ```jsonc
@@ -886,11 +907,13 @@ All resource shapes are defined in `app/Http/Resources/`. Relationships are lazy
   "bac_resolution_id": 1,
   "awarded_supplier": "ABC Trading Corp",
   "awarded_amount": "11800.00",
+  "download_url": "http://host/api/v1/notices-of-award/1/download",  // always present — file is required
   "issued_at": "2026-07-22T00:00:00.000000Z",
   "created_at": "...",
   "updated_at": "..."
 }
 ```
+> `file_path` is excluded — use `download_url`.
 
 ---
 

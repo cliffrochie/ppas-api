@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\NoticeOfAward;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 final class NoticeOfAwardService
 {
+    public function __construct(private readonly Request $request) {}
+
     public function list(array $filters = []): LengthAwarePaginator
     {
         return NoticeOfAward::with(['bacResolution'])
@@ -31,22 +35,72 @@ final class NoticeOfAwardService
 
     public function store(array $validated): NoticeOfAward
     {
-        return DB::transaction(fn (): NoticeOfAward => NoticeOfAward::create($validated));
+        $file = $this->request->file('file');
+        unset($validated['file']);
+
+        // Store the file on the private disk before opening the transaction.
+        // If the DB write fails, the catch block cleans it up.
+        $path = $file->store("notices-of-award/{$validated['bac_resolution_id']}", 'private');
+
+        try {
+            return DB::transaction(function () use ($validated, $path): NoticeOfAward {
+                $validated['file_path'] = $path;
+
+                return NoticeOfAward::create($validated);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('private')->delete($path);
+
+            throw $e;
+        }
     }
 
     public function update(NoticeOfAward $noa, array $validated): NoticeOfAward
     {
-        return DB::transaction(function () use ($noa, $validated): NoticeOfAward {
-            $noa->update($validated);
+        $file = $this->request->file('file');
+        unset($validated['file']);
 
-            return $noa->refresh();
-        });
+        if ($file === null) {
+            return DB::transaction(function () use ($noa, $validated): NoticeOfAward {
+                $noa->update($validated);
+
+                return $noa->refresh();
+            });
+        }
+
+        $oldPath = $noa->file_path;
+        $newPath = $file->store("notices-of-award/{$noa->bac_resolution_id}", 'private');
+        $validated['file_path'] = $newPath;
+
+        try {
+            $updated = DB::transaction(function () use ($noa, $validated): NoticeOfAward {
+                $noa->update($validated);
+
+                return $noa->refresh();
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('private')->delete($newPath);
+
+            throw $e;
+        }
+
+        if ($oldPath !== null) {
+            Storage::disk('private')->delete($oldPath);
+        }
+
+        return $updated;
     }
 
     public function destroy(NoticeOfAward $noa): void
     {
+        $path = $noa->file_path;
+
         DB::transaction(function () use ($noa): void {
             $noa->delete();
         });
+
+        if ($path !== null) {
+            Storage::disk('private')->delete($path);
+        }
     }
 }

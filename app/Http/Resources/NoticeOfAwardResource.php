@@ -17,7 +17,10 @@ final class NoticeOfAwardResource extends JsonResource
             'bac_resolution_id' => $this->bac_resolution_id,
             'awarded_supplier' => $this->awarded_supplier,
             'awarded_amount' => $this->awarded_amount,
-            // file_path intentionally excluded — served via authorized download route
+            // file_path intentionally excluded — served via authorized download route only.
+            // Consumers use download_url which is authenticated and role-gated.
+            // Always non-null: file_path is a required field on this model.
+            'download_url' => route('notices_of_award.download', $this->id),
             'issued_at' => $this->issued_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

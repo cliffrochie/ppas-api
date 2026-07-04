@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\AbstractOfQuotation;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 final class AbstractOfQuotationService
 {
+    public function __construct(private readonly Request $request) {}
+
     public function list(array $filters = []): LengthAwarePaginator
     {
         return AbstractOfQuotation::with(['preparedBy', 'rfq'])
@@ -28,22 +32,75 @@ final class AbstractOfQuotationService
 
     public function store(array $validated): AbstractOfQuotation
     {
-        return DB::transaction(fn (): AbstractOfQuotation => AbstractOfQuotation::create($validated));
+        $file = $this->request->file('file');
+        unset($validated['file']);
+        $path = null;
+
+        try {
+            if ($file !== null) {
+                $path = $file->store("abstracts-of-quotation/{$validated['rfq_id']}", 'private');
+            }
+
+            return DB::transaction(function () use ($validated, $path): AbstractOfQuotation {
+                $validated['file_path'] = $path;
+
+                return AbstractOfQuotation::create($validated);
+            });
+        } catch (\Throwable $e) {
+            if ($path !== null) {
+                Storage::disk('private')->delete($path);
+            }
+
+            throw $e;
+        }
     }
 
     public function update(AbstractOfQuotation $abstract, array $validated): AbstractOfQuotation
     {
-        return DB::transaction(function () use ($abstract, $validated): AbstractOfQuotation {
-            $abstract->update($validated);
+        $file = $this->request->file('file');
+        unset($validated['file']);
 
-            return $abstract->refresh()->load(['preparedBy']);
-        });
+        if ($file === null) {
+            return DB::transaction(function () use ($abstract, $validated): AbstractOfQuotation {
+                $abstract->update($validated);
+
+                return $abstract->refresh()->load(['preparedBy']);
+            });
+        }
+
+        $oldPath = $abstract->file_path;
+        $newPath = $file->store("abstracts-of-quotation/{$abstract->rfq_id}", 'private');
+        $validated['file_path'] = $newPath;
+
+        try {
+            $updated = DB::transaction(function () use ($abstract, $validated): AbstractOfQuotation {
+                $abstract->update($validated);
+
+                return $abstract->refresh()->load(['preparedBy']);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('private')->delete($newPath);
+
+            throw $e;
+        }
+
+        if ($oldPath !== null) {
+            Storage::disk('private')->delete($oldPath);
+        }
+
+        return $updated;
     }
 
     public function destroy(AbstractOfQuotation $abstract): void
     {
+        $path = $abstract->file_path;
+
         DB::transaction(function () use ($abstract): void {
             $abstract->delete();
         });
+
+        if ($path !== null) {
+            Storage::disk('private')->delete($path);
+        }
     }
 }

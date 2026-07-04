@@ -11,10 +11,20 @@ use App\Models\PurchaseRequest;
 use App\Models\Rfq;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class BacResolutionTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Fake the private disk so no real filesystem I/O occurs in tests.
+        Storage::fake('private');
+    }
+
     private function procurementOfficer(): User
     {
         $role = Role::where('name', 'procurement_officer')->firstOrFail();
@@ -58,11 +68,13 @@ class BacResolutionTest extends TestCase
         static $seq = 0;
         $seq++;
 
+        $file = UploadedFile::fake()->create('resolution.pdf', 100, 'application/pdf');
+
         return BacResolution::create([
             'resolution_number' => "BAC-{$seq}",
             'abstract_of_quotation_id' => $abstract->id,
             'prepared_by_id' => $user->id,
-            'file_path' => 'documents/bac/resolution.pdf',
+            'file_path' => $file->store("bac-resolutions/{$abstract->id}", 'private'),
         ]);
     }
 
@@ -128,13 +140,14 @@ class BacResolutionTest extends TestCase
     {
         $officer = $this->procurementOfficer();
         $abstract = $this->createAbstractOfQuotation($officer);
+        $file = UploadedFile::fake()->create('res.pdf', 100, 'application/pdf');
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [
                 'resolution_number' => 'BAC-2026-001',
                 'abstract_of_quotation_id' => $abstract->id,
                 'prepared_by_id' => $officer->id,
-                'file_path' => 'documents/bac/res.pdf',
+                'file' => $file,
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.resolution_number', 'BAC-2026-001')
@@ -149,7 +162,7 @@ class BacResolutionTest extends TestCase
             ->postJson('/api/v1/bac-resolutions', [])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Validation failed.')
-            ->assertJsonStructure(['errors' => ['resolution_number', 'abstract_of_quotation_id', 'prepared_by_id', 'file_path']]);
+            ->assertJsonStructure(['errors' => ['resolution_number', 'abstract_of_quotation_id', 'prepared_by_id', 'file']]);
     }
 
     public function test_store_returns_422_when_abstract_already_has_resolution(): void
@@ -157,16 +170,82 @@ class BacResolutionTest extends TestCase
         $officer = $this->procurementOfficer();
         $abstract = $this->createAbstractOfQuotation($officer);
         $this->createBacResolution($abstract, $officer);
+        $file = UploadedFile::fake()->create('dup.pdf', 100, 'application/pdf');
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [
                 'resolution_number' => 'BAC-DUPLICATE',
                 'abstract_of_quotation_id' => $abstract->id,
                 'prepared_by_id' => $officer->id,
-                'file_path' => 'documents/dup.pdf',
+                'file' => $file,
             ])
             ->assertStatus(422)
             ->assertJsonStructure(['errors' => ['abstract_of_quotation_id']]);
+    }
+
+    // -------------------------------------------------------------------------
+    // File upload / download
+    // -------------------------------------------------------------------------
+
+    public function test_file_path_not_exposed_but_download_url_present(): void
+    {
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
+        $file = UploadedFile::fake()->create('res.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->postJson('/api/v1/bac-resolutions', [
+                'resolution_number' => 'BAC-2026-002',
+                'abstract_of_quotation_id' => $abstract->id,
+                'prepared_by_id' => $officer->id,
+                'file' => $file,
+            ]);
+
+        $response->assertStatus(201);
+        $this->assertArrayNotHasKey('file_path', $response->json('data'));
+        $this->assertNotNull($response->json('data.download_url'));
+    }
+
+    public function test_can_download_bac_resolution_document(): void
+    {
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
+        $resolution = $this->createBacResolution($abstract, $officer);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->get("/api/v1/bac-resolutions/{$resolution->id}/download");
+
+        $response->assertStatus(200);
+        $this->assertStringContainsString(
+            'attachment',
+            $response->headers->get('Content-Disposition', ''),
+        );
+    }
+
+    public function test_download_returns_401_when_unauthenticated(): void
+    {
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
+        $resolution = $this->createBacResolution($abstract, $officer);
+
+        $this->getJson("/api/v1/bac-resolutions/{$resolution->id}/download")
+            ->assertStatus(401);
+    }
+
+    public function test_file_deleted_from_disk_on_destroy(): void
+    {
+        $officer = $this->procurementOfficer();
+        $abstract = $this->createAbstractOfQuotation($officer);
+        $resolution = $this->createBacResolution($abstract, $officer);
+        $path = $resolution->file_path;
+
+        Storage::disk('private')->assertExists($path);
+
+        $this->actingAs($officer, 'sanctum')
+            ->deleteJson("/api/v1/bac-resolutions/{$resolution->id}")
+            ->assertStatus(200);
+
+        Storage::disk('private')->assertMissing($path);
     }
 
     // -------------------------------------------------------------------------

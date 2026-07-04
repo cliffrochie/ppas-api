@@ -22,7 +22,8 @@ final class StoreRfqRequest extends FormRequest
             'prepared_by_id'      => ['required', 'exists:users,id'],
             'deadline'            => ['nullable', 'date'],
             'status'              => ['sometimes', 'in:draft,for_signature,signed,canvassing,closed'],
-            'file_path'           => ['nullable', 'string', 'max:500'],
+            // file_path is derived server-side from the uploaded file — never accepted from the client.
+            'file'                => ['nullable', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx'],
         ];
     }
 }

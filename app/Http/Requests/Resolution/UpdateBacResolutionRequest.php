@@ -22,7 +22,8 @@ final class UpdateBacResolutionRequest extends FormRequest
         return [
             'resolution_number' => ['sometimes', 'required', 'string', 'max:100'],
             'prepared_by_id'    => ['sometimes', 'required', 'exists:users,id'],
-            'file_path'         => ['sometimes', 'required', 'string', 'max:500'],
+            // file_path is derived server-side from the uploaded file — never accepted from the client.
+            'file'              => ['sometimes', 'required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx'],
             'issued_at'         => ['nullable', 'date'],
         ];
     }

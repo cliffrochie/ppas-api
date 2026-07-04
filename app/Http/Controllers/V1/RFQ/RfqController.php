@@ -12,6 +12,8 @@ use App\Http\Resources\RfqResource;
 use App\Models\Rfq;
 use App\Services\RfqService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class RfqController extends Controller
 {
@@ -82,5 +84,18 @@ final class RfqController extends Controller
             'message' => 'RFQ deleted successfully.',
             'errors' => null,
         ]);
+    }
+
+    /**
+     * Serve the RFQ's uploaded document through an authorized download.
+     * The file is streamed from the private disk — never exposed via a public URL.
+     */
+    public function download(Rfq $rfq): StreamedResponse
+    {
+        $this->authorize('view', $rfq);
+
+        abort_if($rfq->file_path === null, 404);
+
+        return Storage::disk('private')->download($rfq->file_path);
     }
 }

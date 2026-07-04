@@ -18,7 +18,11 @@ final class AbstractOfQuotationResource extends JsonResource
             'recommended_supplier' => $this->recommended_supplier,
             'recommended_amount'   => $this->recommended_amount,
             'status'               => $this->status,
-            // file_path intentionally excluded — served via authorized download route
+            // file_path intentionally excluded — served via authorized download route only.
+            // Consumers use download_url which is authenticated and role-gated.
+            'download_url'         => $this->file_path !== null
+                ? route('abstracts_of_quotation.download', $this->id)
+                : null,
             'approved_at'          => $this->approved_at,
             'prepared_by'          => new UserResource($this->whenLoaded('preparedBy')),
             'created_at'           => $this->created_at,

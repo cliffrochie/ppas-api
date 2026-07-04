@@ -12,6 +12,8 @@ use App\Http\Resources\BacResolutionResource;
 use App\Models\BacResolution;
 use App\Services\BacResolutionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class BacResolutionController extends Controller
 {
@@ -82,5 +84,16 @@ final class BacResolutionController extends Controller
             'message' => 'BAC resolution deleted successfully.',
             'errors' => null,
         ]);
+    }
+
+    /**
+     * Serve the resolution's uploaded document through an authorized download.
+     * The file is streamed from the private disk — never exposed via a public URL.
+     */
+    public function download(BacResolution $bacResolution): StreamedResponse
+    {
+        $this->authorize('view', $bacResolution);
+
+        return Storage::disk('private')->download($bacResolution->file_path);
     }
 }

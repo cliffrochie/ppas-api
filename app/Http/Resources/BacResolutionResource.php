@@ -16,7 +16,10 @@ final class BacResolutionResource extends JsonResource
             'resolution_number'         => $this->resolution_number,
             'abstract_of_quotation_id'  => $this->abstract_of_quotation_id,
             'prepared_by_id'            => $this->prepared_by_id,
-            // file_path intentionally excluded — served via authorized download route
+            // file_path intentionally excluded — served via authorized download route only.
+            // Consumers use download_url which is authenticated and role-gated.
+            // Always non-null: file_path is a required field on this model.
+            'download_url'             => route('bac_resolutions.download', $this->id),
             'issued_at'                 => $this->issued_at,
             'prepared_by'               => new UserResource($this->whenLoaded('preparedBy')),
             'created_at'                => $this->created_at,

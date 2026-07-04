@@ -12,6 +12,8 @@ use App\Http\Resources\AbstractOfQuotationResource;
 use App\Models\AbstractOfQuotation;
 use App\Services\AbstractOfQuotationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AbstractOfQuotationController extends Controller
 {
@@ -82,5 +84,18 @@ final class AbstractOfQuotationController extends Controller
             'message' => 'Abstract of quotation deleted successfully.',
             'errors' => null,
         ]);
+    }
+
+    /**
+     * Serve the abstract's uploaded document through an authorized download.
+     * The file is streamed from the private disk — never exposed via a public URL.
+     */
+    public function download(AbstractOfQuotation $abstractOfQuotation): StreamedResponse
+    {
+        $this->authorize('view', $abstractOfQuotation);
+
+        abort_if($abstractOfQuotation->file_path === null, 404);
+
+        return Storage::disk('private')->download($abstractOfQuotation->file_path);
     }
 }

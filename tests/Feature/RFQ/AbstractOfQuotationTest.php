@@ -10,10 +10,20 @@ use App\Models\PurchaseRequest;
 use App\Models\Rfq;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AbstractOfQuotationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Fake the private disk so no real filesystem I/O occurs in tests.
+        Storage::fake('private');
+    }
+
     private function procurementOfficer(): User
     {
         $role = Role::where('name', 'procurement_officer')->firstOrFail();
@@ -162,6 +172,89 @@ class AbstractOfQuotationTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonStructure(['errors' => ['rfq_id']]);
+    }
+
+    // -------------------------------------------------------------------------
+    // File upload / download
+    // -------------------------------------------------------------------------
+
+    public function test_store_with_file_upload_sets_download_url(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $file = UploadedFile::fake()->create('abstract.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->postJson('/api/v1/abstracts-of-quotation', [
+                'rfq_id' => $rfq->id,
+                'prepared_by_id' => $officer->id,
+                'file' => $file,
+            ]);
+
+        $response->assertStatus(201);
+        $this->assertArrayNotHasKey('file_path', $response->json('data'));
+        $this->assertNotNull($response->json('data.download_url'));
+    }
+
+    public function test_download_url_is_null_when_no_file_uploaded(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $abstract = $this->createAbstractOfQuotation($rfq, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/abstracts-of-quotation/{$abstract->id}")
+            ->assertStatus(200)
+            ->assertJsonPath('data.download_url', null);
+    }
+
+    public function test_can_download_abstract_document(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $file = UploadedFile::fake()->create('abstract.pdf', 100, 'application/pdf');
+
+        $abstract = AbstractOfQuotation::create([
+            'rfq_id' => $rfq->id,
+            'prepared_by_id' => $officer->id,
+            'status' => 'draft',
+            'file_path' => $file->store("abstracts-of-quotation/{$rfq->id}", 'private'),
+        ]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->get("/api/v1/abstracts-of-quotation/{$abstract->id}/download");
+
+        $response->assertStatus(200);
+        $this->assertStringContainsString(
+            'attachment',
+            $response->headers->get('Content-Disposition', ''),
+        );
+    }
+
+    public function test_download_returns_404_when_no_file_uploaded(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $abstract = $this->createAbstractOfQuotation($rfq, $officer);
+
+        $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/v1/abstracts-of-quotation/{$abstract->id}/download")
+            ->assertStatus(404);
+    }
+
+    public function test_download_returns_401_when_unauthenticated(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+        $rfq = $this->createRfq($pr, $officer);
+        $abstract = $this->createAbstractOfQuotation($rfq, $officer);
+
+        $this->getJson("/api/v1/abstracts-of-quotation/{$abstract->id}/download")
+            ->assertStatus(401);
     }
 
     // -------------------------------------------------------------------------

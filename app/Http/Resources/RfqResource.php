@@ -18,7 +18,11 @@ final class RfqResource extends JsonResource
             'prepared_by_id'      => $this->prepared_by_id,
             'deadline'            => $this->deadline,
             'status'              => $this->status,
-            // file_path intentionally excluded — served via authorized download route
+            // file_path intentionally excluded — served via authorized download route only.
+            // Consumers use download_url which is authenticated and role-gated.
+            'download_url'        => $this->file_path !== null
+                ? route('rfqs.download', $this->id)
+                : null,
             'prepared_by'         => new UserResource($this->whenLoaded('preparedBy')),
             'items'               => RfqItemResource::collection($this->whenLoaded('items')),
             'created_at'          => $this->created_at,
