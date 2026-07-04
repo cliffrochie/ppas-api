@@ -313,6 +313,7 @@ class RfqTest extends TestCase
         $officer = $this->procurementOfficer();
         $pr = $this->createPurchaseRequest($officer);
         $year = now()->year;
+        $month = now()->format('m');
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/rfqs', [
@@ -322,7 +323,7 @@ class RfqTest extends TestCase
 
         $response->assertStatus(201);
         $this->assertMatchesRegularExpression(
-            "/^RFQ-{$year}-\d{5}$/",
+            "/^RFQ-{$year}-{$month}-\d{3}$/",
             $response->json('data.rfq_number')
         );
     }

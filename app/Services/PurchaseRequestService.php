@@ -56,6 +56,7 @@ final class PurchaseRequestService
         private readonly Request $request,
         private readonly PrStatusHistoryService $prStatusHistoryService,
         private readonly NotificationService $notificationService,
+        private readonly DocumentNumberService $numberGenerator,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -169,16 +170,8 @@ final class PurchaseRequestService
                 $validated['submitted_at'] = now();
 
                 if ($purchaseRequest->rf_number === null) {
-                    $year = now()->year;
-
-                    $last = PurchaseRequest::whereYear('created_at', $year)
-                        ->whereNotNull('rf_number')
-                        ->lockForUpdate()
-                        ->max('rf_number');
-
-                    $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
                     // rf_number is not in #[Fillable] — forceFill writes it below.
-                    $validated['rf_number'] = sprintf('RF-%d-%05d', $year, $next);
+                    $validated['rf_number'] = $this->numberGenerator->generate('RF');
                 }
             }
 
@@ -189,16 +182,8 @@ final class PurchaseRequestService
             // ------------------------------------------------------------------
             if (isset($validated['status']) && $validated['status'] === 'pr_prepared') {
                 if ($purchaseRequest->pr_number === null) {
-                    $year = now()->year;
-
-                    $last = PurchaseRequest::whereYear('created_at', $year)
-                        ->whereNotNull('pr_number')
-                        ->lockForUpdate()
-                        ->max('pr_number');
-
-                    $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
                     // pr_number is not in #[Fillable] — forceFill writes it below.
-                    $validated['pr_number'] = sprintf('PR-%d-%05d', $year, $next);
+                    $validated['pr_number'] = $this->numberGenerator->generate('PR');
                 }
             }
 

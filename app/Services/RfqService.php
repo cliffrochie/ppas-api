@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\Storage;
 
 final class RfqService
 {
-    public function __construct(private readonly Request $request) {}
+    public function __construct(
+        private readonly Request $request,
+        private readonly DocumentNumberService $numberGenerator,
+    ) {}
 
     public function list(array $filters = []): LengthAwarePaginator
     {
@@ -47,7 +50,7 @@ final class RfqService
 
             return DB::transaction(function () use ($validated, $path): Rfq {
                 // rfq_number is auto-generated — never comes from user input
-                $validated['rfq_number'] = $this->generateRfqNumber();
+                $validated['rfq_number'] = $this->numberGenerator->generate('RFQ');
                 $validated['file_path'] = $path;
 
                 return Rfq::create($validated);
@@ -116,21 +119,5 @@ final class RfqService
         if ($path !== null) {
             Storage::disk('private')->delete($path);
         }
-    }
-
-    private function generateRfqNumber(): string
-    {
-        // Must be called inside a DB::transaction — lockForUpdate() is a no-op
-        // outside a transaction and would produce duplicates under concurrency.
-        $year = now()->year;
-
-        $last = Rfq::whereYear('created_at', $year)
-            ->whereNotNull('rfq_number')
-            ->lockForUpdate()
-            ->max('rfq_number');
-
-        $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
-
-        return sprintf('RFQ-%d-%05d', $year, $next);
     }
 }

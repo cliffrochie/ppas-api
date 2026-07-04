@@ -409,6 +409,7 @@ class PurchaseRequestTest extends TestCase
         $requester = $this->requester();
         $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
         $year = now()->year;
+        $month = now()->format('m');
 
         $this->assertNull($pr->rf_number);
 
@@ -418,7 +419,7 @@ class PurchaseRequestTest extends TestCase
             ]);
 
         $response->assertStatus(200);
-        $this->assertSame("RF-{$year}-00001", $response->json('data.rf_number'));
+        $this->assertSame("RF-{$year}-{$month}-001", $response->json('data.rf_number'));
     }
 
     public function test_rf_number_is_preserved_on_resubmission(): void
@@ -462,6 +463,7 @@ class PurchaseRequestTest extends TestCase
         $officer = $this->procurementOfficer();
         $pr = $this->createPurchaseRequest($officer, ['status' => 'forwarded_to_ppu']);
         $year = now()->year;
+        $month = now()->format('m');
 
         $this->assertNull($pr->pr_number);
 
@@ -471,7 +473,7 @@ class PurchaseRequestTest extends TestCase
             ]);
 
         $response->assertStatus(200);
-        $this->assertSame("PR-{$year}-00001", $response->json('data.pr_number'));
+        $this->assertSame("PR-{$year}-{$month}-001", $response->json('data.pr_number'));
     }
 
     // -------------------------------------------------------------------------

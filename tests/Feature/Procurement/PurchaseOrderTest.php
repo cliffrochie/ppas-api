@@ -206,6 +206,7 @@ class PurchaseOrderTest extends TestCase
         $officer = $this->procurementOfficer();
         $pr = $this->createPurchaseRequest($officer);
         $year = now()->year;
+        $month = now()->format('m');
 
         $response = $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-orders', [
@@ -214,15 +215,16 @@ class PurchaseOrderTest extends TestCase
             ]);
 
         $response->assertStatus(201);
-        $this->assertSame("PO-{$year}-00001", $response->json('data.po_number'));
+        $this->assertSame("PO-{$year}-{$month}-001", $response->json('data.po_number'));
     }
 
-    public function test_po_number_increments_per_year(): void
+    public function test_po_number_increments_within_month(): void
     {
         $officer = $this->procurementOfficer();
         $pr1 = $this->createPurchaseRequest($officer);
         $pr2 = $this->createPurchaseRequest($officer);
         $year = now()->year;
+        $month = now()->format('m');
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-orders', [
@@ -230,7 +232,7 @@ class PurchaseOrderTest extends TestCase
                 'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(201)
-            ->assertJsonPath('data.po_number', "PO-{$year}-00001");
+            ->assertJsonPath('data.po_number', "PO-{$year}-{$month}-001");
 
         $this->actingAs($officer, 'sanctum')
             ->postJson('/api/v1/purchase-orders', [
@@ -238,7 +240,7 @@ class PurchaseOrderTest extends TestCase
                 'prepared_by_id' => $officer->id,
             ])
             ->assertStatus(201)
-            ->assertJsonPath('data.po_number', "PO-{$year}-00002");
+            ->assertJsonPath('data.po_number', "PO-{$year}-{$month}-002");
     }
 
     // -------------------------------------------------------------------------

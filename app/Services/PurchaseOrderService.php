@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 final class PurchaseOrderService
 {
+    public function __construct(private readonly DocumentNumberService $numberGenerator) {}
+
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
         return PurchaseOrder::with(['preparedBy', 'purchaseRequest'])
@@ -37,7 +39,7 @@ final class PurchaseOrderService
     {
         return DB::transaction(function () use ($validated): PurchaseOrder {
             // po_number is auto-generated — never comes from user input
-            $validated['po_number'] = $this->generatePoNumber();
+            $validated['po_number'] = $this->numberGenerator->generate('PO');
 
             return PurchaseOrder::create($validated);
         });
@@ -57,21 +59,5 @@ final class PurchaseOrderService
         DB::transaction(function () use ($purchaseOrder): void {
             $purchaseOrder->delete();
         });
-    }
-
-    private function generatePoNumber(): string
-    {
-        // Must be called inside a DB::transaction — lockForUpdate() is a no-op
-        // outside a transaction and would produce duplicates under concurrency.
-        $year = now()->year;
-
-        $last = PurchaseOrder::whereYear('created_at', $year)
-            ->whereNotNull('po_number')
-            ->lockForUpdate()
-            ->max('po_number');
-
-        $next = $last !== null ? ((int) substr($last, -5)) + 1 : 1;
-
-        return sprintf('PO-%d-%05d', $year, $next);
     }
 }
