@@ -33,6 +33,13 @@ class NoticeOfAwardTest extends TestCase
         return User::factory()->create(['role_id' => $role->id]);
     }
 
+    private function bacSecretariat(): User
+    {
+        $role = Role::where('name', 'bac_secretariat')->firstOrFail();
+
+        return User::factory()->create(['role_id' => $role->id]);
+    }
+
     private function officeId(): int
     {
         return Office::where('code', 'ORM')->value('id');
@@ -148,10 +155,11 @@ class NoticeOfAwardTest extends TestCase
     public function test_store_creates_notice_of_award(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $resolution = $this->createBacResolution($officer);
         $file = UploadedFile::fake()->create('award.pdf', 100, 'application/pdf');
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/notices-of-award', [
                 'noa_number' => 'NOA-2026-001',
                 'bac_resolution_id' => $resolution->id,
@@ -166,9 +174,9 @@ class NoticeOfAwardTest extends TestCase
 
     public function test_store_returns_422_when_required_fields_are_missing(): void
     {
-        $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/notices-of-award', [])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Validation failed.')
@@ -178,11 +186,12 @@ class NoticeOfAwardTest extends TestCase
     public function test_store_returns_422_when_resolution_already_has_noa(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $resolution = $this->createBacResolution($officer);
         $this->createNoticeOfAward($resolution);
         $file = UploadedFile::fake()->create('dup.pdf', 100, 'application/pdf');
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/notices-of-award', [
                 'noa_number' => 'NOA-DUPLICATE',
                 'bac_resolution_id' => $resolution->id,
@@ -201,10 +210,11 @@ class NoticeOfAwardTest extends TestCase
     public function test_file_path_not_exposed_but_download_url_present(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $resolution = $this->createBacResolution($officer);
         $file = UploadedFile::fake()->create('award.pdf', 100, 'application/pdf');
 
-        $response = $this->actingAs($officer, 'sanctum')
+        $response = $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/notices-of-award', [
                 'noa_number' => 'NOA-2026-002',
                 'bac_resolution_id' => $resolution->id,
@@ -247,13 +257,14 @@ class NoticeOfAwardTest extends TestCase
     public function test_file_deleted_from_disk_on_destroy(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $resolution = $this->createBacResolution($officer);
         $noa = $this->createNoticeOfAward($resolution);
         $path = $noa->file_path;
 
         Storage::disk('private')->assertExists($path);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->deleteJson("/api/v1/notices-of-award/{$noa->id}")
             ->assertStatus(200);
 
@@ -293,10 +304,11 @@ class NoticeOfAwardTest extends TestCase
     public function test_update_modifies_notice_of_award(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $resolution = $this->createBacResolution($officer);
         $noa = $this->createNoticeOfAward($resolution);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->patchJson("/api/v1/notices-of-award/{$noa->id}", [
                 'awarded_supplier' => 'Updated Winner Corp.',
             ])
@@ -311,10 +323,11 @@ class NoticeOfAwardTest extends TestCase
     public function test_destroy_deletes_notice_of_award(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $resolution = $this->createBacResolution($officer);
         $noa = $this->createNoticeOfAward($resolution);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->deleteJson("/api/v1/notices-of-award/{$noa->id}")
             ->assertStatus(200)
             ->assertJsonPath('data', null);

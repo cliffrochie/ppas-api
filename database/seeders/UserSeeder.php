@@ -14,16 +14,17 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $roleRequester   = Role::where('name', 'requester')->value('id');
+        $roleRequester = Role::where('name', 'requester')->value('id');
         $roleProcurement = Role::where('name', 'procurement_officer')->value('id');
-        $roleBudget      = Role::where('name', 'budget_officer')->value('id');
+        $roleBacSecretariat = Role::where('name', 'bac_secretariat')->value('id');
+        $roleBudget = Role::where('name', 'budget_officer')->value('id');
 
         $orm = Office::where('code', 'ORM')->value('id');
         $bac = Office::where('code', 'BAC')->value('id');
-        $as  = Office::where('code', 'AS')->value('id');
-        $fs  = Office::where('code', 'FS')->value('id');
-        $es  = Office::where('code', 'ES')->value('id');
-        $os  = Office::where('code', 'OS')->value('id');
+        $as = Office::where('code', 'AS')->value('id');
+        $fs = Office::where('code', 'FS')->value('id');
+        $es = Office::where('code', 'ES')->value('id');
+        $os = Office::where('code', 'OS')->value('id');
 
         $users = [
             // ── Procurement Officers (BAC) ────────────────────────────────────
@@ -32,6 +33,11 @@ class UserSeeder extends Seeder
             ['first_name' => 'Maricris',  'middle_name' => 'Aguilar',   'last_name' => 'Borja',       'email' => 'procurement3@nia-caraga.test',         'role_id' => $roleProcurement, 'office_id' => $bac],
             ['first_name' => 'Emmanuel',  'middle_name' => 'Pascual',   'last_name' => 'Cabrera',     'email' => 'procurement4@nia-caraga.test',         'role_id' => $roleProcurement, 'office_id' => $bac],
             ['first_name' => 'Lourdes',   'middle_name' => 'Castillo',  'last_name' => 'Ramos',       'email' => 'procurement5@nia-caraga.test',         'role_id' => $roleProcurement, 'office_id' => $bac],
+
+            // ── BAC Secretariat (BAC) ─────────────────────────────────────────
+            ['first_name' => 'Herminia',  'middle_name' => 'Salonga',   'last_name' => 'Villareal',   'email' => 'bac.secretariat@nia-caraga.test',      'role_id' => $roleBacSecretariat, 'office_id' => $bac],
+            ['first_name' => 'Restituto', 'middle_name' => 'Gatchalian', 'last_name' => 'Ocampo',      'email' => 'bac.secretariat2@nia-caraga.test',     'role_id' => $roleBacSecretariat, 'office_id' => $bac],
+            ['first_name' => 'Adoracion', 'middle_name' => 'Nepomuceno', 'last_name' => 'Del Rosario', 'email' => 'bac.secretariat3@nia-caraga.test',     'role_id' => $roleBacSecretariat, 'office_id' => $bac],
 
             // ── Budget Officers (AS) ──────────────────────────────────────────
             ['first_name' => 'Maria',     'middle_name' => 'Reyes',     'last_name' => 'Santos',      'email' => 'budget@nia-caraga.test',               'role_id' => $roleBudget,      'office_id' => $as],
@@ -42,13 +48,13 @@ class UserSeeder extends Seeder
 
             // ── Requesters — Finance Section (FS) ────────────────────────────
             ['first_name' => 'Carlos',    'middle_name' => 'Lopez',     'last_name' => 'Reyes',       'email' => 'requester.ord@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
-            ['first_name' => 'Angelica',  'middle_name' => 'Delos Reyes','last_name' => 'Fuentes',    'email' => 'requester.fs2@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
-            ['first_name' => 'Renato',    'middle_name' => 'Villafuerte','last_name' => 'Perez',      'email' => 'requester.fs3@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
-            ['first_name' => 'Corazon',   'middle_name' => 'Evangelista','last_name' => 'Roque',      'email' => 'requester.fs4@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
+            ['first_name' => 'Angelica',  'middle_name' => 'Delos Reyes', 'last_name' => 'Fuentes',    'email' => 'requester.fs2@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
+            ['first_name' => 'Renato',    'middle_name' => 'Villafuerte', 'last_name' => 'Perez',      'email' => 'requester.fs3@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
+            ['first_name' => 'Corazon',   'middle_name' => 'Evangelista', 'last_name' => 'Roque',      'email' => 'requester.fs4@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
             ['first_name' => 'Danilo',    'middle_name' => 'Herrera',   'last_name' => 'Salazar',     'email' => 'requester.fs5@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
             ['first_name' => 'Natividad', 'middle_name' => 'Abad',      'last_name' => 'Bautista',    'email' => 'requester.fs6@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
             ['first_name' => 'Gregorio',  'middle_name' => 'Tolentino', 'last_name' => 'Diaz',        'email' => 'requester.fs7@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
-            ['first_name' => 'Luzviminda','middle_name' => 'Mercado',   'last_name' => 'Zamora',      'email' => 'requester.fs8@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
+            ['first_name' => 'Luzviminda', 'middle_name' => 'Mercado',   'last_name' => 'Zamora',      'email' => 'requester.fs8@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $fs],
 
             // ── Requesters — Engineering Section (ES) ────────────────────────
             ['first_name' => 'Ana',       'middle_name' => 'Cruz',      'last_name' => 'Mendoza',     'email' => 'requester.ed@nia-caraga.test',         'role_id' => $roleRequester,   'office_id' => $es],
@@ -58,7 +64,7 @@ class UserSeeder extends Seeder
             ['first_name' => 'Maricel',   'middle_name' => 'Dela Torre', 'last_name' => 'Sison',      'email' => 'requester.es5@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $es],
             ['first_name' => 'Ernesto',   'middle_name' => 'Caguioa',   'last_name' => 'Valdez',      'email' => 'requester.es6@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $es],
             ['first_name' => 'Florencia', 'middle_name' => 'Abrera',    'last_name' => 'Manalo',      'email' => 'requester.es7@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $es],
-            ['first_name' => 'Norberto',  'middle_name' => 'Buenaventura','last_name' => 'Castillo',  'email' => 'requester.es8@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $es],
+            ['first_name' => 'Norberto',  'middle_name' => 'Buenaventura', 'last_name' => 'Castillo',  'email' => 'requester.es8@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $es],
 
             // ── Requesters — Operation Section (OS) ──────────────────────────
             ['first_name' => 'Ricardo',   'middle_name' => 'Garcia',    'last_name' => 'Lim',         'email' => 'requester.fd@nia-caraga.test',         'role_id' => $roleRequester,   'office_id' => $os],
@@ -71,7 +77,7 @@ class UserSeeder extends Seeder
             ['first_name' => 'Victorino', 'middle_name' => 'Halili',    'last_name' => 'Crisostomo',  'email' => 'requester.os8@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $os],
 
             // ── Requesters — Administrative Section (AS) ─────────────────────
-            ['first_name' => 'Milagros',  'middle_name' => 'Concepcion','last_name' => 'Panganiban',  'email' => 'requester.as1@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $as],
+            ['first_name' => 'Milagros',  'middle_name' => 'Concepcion', 'last_name' => 'Panganiban',  'email' => 'requester.as1@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $as],
             ['first_name' => 'Arturo',    'middle_name' => 'Vergara',   'last_name' => 'Aragon',      'email' => 'requester.as2@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $as],
             ['first_name' => 'Edna',      'middle_name' => 'Lacsamana', 'last_name' => 'Buenaobra',   'email' => 'requester.as3@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $as],
             ['first_name' => 'Wilfredo',  'middle_name' => 'Alagon',    'last_name' => 'Tamayo',      'email' => 'requester.as4@nia-caraga.test',        'role_id' => $roleRequester,   'office_id' => $as],
@@ -79,7 +85,7 @@ class UserSeeder extends Seeder
 
             // ── Requesters — Office of the Regional Manager (ORM) ────────────
             ['first_name' => 'Leandro',   'middle_name' => 'Tañedo',    'last_name' => 'Corpuz',      'email' => 'requester.orm1@nia-caraga.test',       'role_id' => $roleRequester,   'office_id' => $orm],
-            ['first_name' => 'Concepcion','middle_name' => 'Quiño',     'last_name' => 'Ferrer',      'email' => 'requester.orm2@nia-caraga.test',       'role_id' => $roleRequester,   'office_id' => $orm],
+            ['first_name' => 'Concepcion', 'middle_name' => 'Quiño',     'last_name' => 'Ferrer',      'email' => 'requester.orm2@nia-caraga.test',       'role_id' => $roleRequester,   'office_id' => $orm],
             ['first_name' => 'Arsenio',   'middle_name' => 'Badillo',   'last_name' => 'Maniquis',    'email' => 'requester.orm3@nia-caraga.test',       'role_id' => $roleRequester,   'office_id' => $orm],
             ['first_name' => 'Ligaya',    'middle_name' => 'Chua',      'last_name' => 'Evangelio',   'email' => 'requester.orm4@nia-caraga.test',       'role_id' => $roleRequester,   'office_id' => $orm],
             ['first_name' => 'Domingo',   'middle_name' => 'Nieva',     'last_name' => 'Sioco',       'email' => 'requester.orm5@nia-caraga.test',       'role_id' => $roleRequester,   'office_id' => $orm],
@@ -90,10 +96,10 @@ class UserSeeder extends Seeder
         ];
 
         $defaults = [
-            'extension_name'     => null,
-            'email_verified_at'  => now(),
-            'password'           => Hash::make('password'),
-            'is_active'          => true,
+            'extension_name' => null,
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'is_active' => true,
         ];
 
         foreach ($users as $user) {

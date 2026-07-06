@@ -18,24 +18,24 @@ final class PurchaseRequestTransitions
      * service) or have no additional role restriction beyond the base policy.
      */
     public const ROLE_MAP = [
-        'draft:submitted'                        => ['requester'],
-        'submitted:under_review'                 => ['procurement_officer'],
-        'submitted:returned'                     => ['procurement_officer'],
-        'under_review:for_budget_approval'       => ['procurement_officer'],
-        'under_review:returned'                  => ['procurement_officer'],
-        'returned:submitted'                     => ['requester'],
-        'for_budget_approval:budget_approved'    => ['budget_officer'],
-        'for_budget_approval:disapproved'        => ['budget_officer'],
-        'budget_approved:forwarded_to_ppu'       => ['budget_officer'],
+        'draft:submitted' => ['requester'],
+        'submitted:under_review' => ['bac_secretariat'],
+        'submitted:returned' => ['bac_secretariat'],
+        'under_review:for_budget_approval' => ['bac_secretariat'],
+        'under_review:returned' => ['bac_secretariat'],
+        'returned:submitted' => ['requester'],
+        'for_budget_approval:budget_approved' => ['budget_officer'],
+        'for_budget_approval:disapproved' => ['budget_officer'],
+        'budget_approved:forwarded_to_ppu' => ['budget_officer'],
         // forwarded_to_ppu onwards — all handled by procurement_officer
-        'forwarded_to_ppu:pr_prepared'           => ['procurement_officer'],
-        'pr_prepared:pr_approved'                => ['procurement_officer'],
-        'pr_approved:rfq_prepared'               => ['procurement_officer'],
-        'rfq_prepared:canvassing'                => ['procurement_officer'],
-        'canvassing:abstract_prepared'           => ['procurement_officer'],
-        'abstract_prepared:bac_resolution_noa'   => ['procurement_officer'],
-        'bac_resolution_noa:po_prepared'         => ['procurement_officer'],
-        'po_prepared:completed'                  => ['procurement_officer'],
+        'forwarded_to_ppu:pr_prepared' => ['procurement_officer'],
+        'pr_prepared:pr_approved' => ['procurement_officer'],
+        'pr_approved:rfq_prepared' => ['procurement_officer'],
+        'rfq_prepared:canvassing' => ['procurement_officer'],
+        'canvassing:abstract_prepared' => ['procurement_officer'],
+        'abstract_prepared:bac_resolution_noa' => ['bac_secretariat'],
+        'bac_resolution_noa:po_prepared' => ['procurement_officer'],
+        'po_prepared:completed' => ['procurement_officer'],
     ];
 
     /**

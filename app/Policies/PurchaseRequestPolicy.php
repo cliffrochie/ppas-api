@@ -11,9 +11,10 @@ final class PurchaseRequestPolicy
 {
     /**
      * Permission matrix:
-     *   requester          — viewAny (own only enforced at service level), view (own), create, update (own draft), delete (own draft)
+     *   requester           — viewAny (own only enforced at service level), view (own), create, update (own draft), delete (own draft)
      *   procurement_officer — full access
-     *   budget_officer      — viewAny + view (read-only)
+     *   bac_secretariat     — viewAny + view (read-only); write eligibility gated by PurchaseRequestTransitions
+     *   budget_officer      — viewAny + view (read-only); write eligibility gated by PurchaseRequestTransitions
      */
     public function viewAny(User $user): bool
     {
@@ -26,7 +27,7 @@ final class PurchaseRequestPolicy
             return true;
         }
 
-        if ($user->role?->name === 'budget_officer') {
+        if (in_array($user->role?->name, ['budget_officer', 'bac_secretariat'], true)) {
             return true;
         }
 
@@ -45,8 +46,9 @@ final class PurchaseRequestPolicy
             return true;
         }
 
-        // budget_officer may update (e.g. to encode alobs_number)
-        if ($user->role?->name === 'budget_officer') {
+        // budget_officer / bac_secretariat may update (base eligibility; the actual
+        // status transition is further gated by PurchaseRequestTransitions)
+        if (in_array($user->role?->name, ['budget_officer', 'bac_secretariat'], true)) {
             return true;
         }
 

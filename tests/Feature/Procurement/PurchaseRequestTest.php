@@ -37,6 +37,13 @@ class PurchaseRequestTest extends TestCase
         return User::factory()->create(['role_id' => $role->id]);
     }
 
+    private function bacSecretariat(): User
+    {
+        $role = Role::where('name', 'bac_secretariat')->firstOrFail();
+
+        return User::factory()->create(['role_id' => $role->id]);
+    }
+
     private function officeId(): int
     {
         return Office::where('code', 'ORM')->value('id');
@@ -513,13 +520,104 @@ class PurchaseRequestTest extends TestCase
     public function test_wrong_role_cannot_transition_status(): void
     {
         // The requester owns the PR and it is in 'submitted' status.
-        // The requester cannot move submitted → under_review — only procurement_officer can.
+        // The requester cannot move submitted → under_review — only bac_secretariat can.
         $requester = $this->requester();
         $pr = $this->createPurchaseRequest($requester, ['status' => 'submitted']);
 
         $this->actingAs($requester, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
                 'status' => 'under_review',
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_bac_secretariat_can_move_submitted_to_under_review(): void
+    {
+        $bacSecretariat = $this->bacSecretariat();
+        $pr = $this->createPurchaseRequest($bacSecretariat, ['status' => 'submitted']);
+
+        $this->actingAs($bacSecretariat, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'under_review',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'under_review');
+    }
+
+    public function test_bac_secretariat_can_return_a_submitted_pr(): void
+    {
+        $bacSecretariat = $this->bacSecretariat();
+        $pr = $this->createPurchaseRequest($bacSecretariat, ['status' => 'submitted']);
+
+        $this->actingAs($bacSecretariat, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'returned',
+                'remarks' => 'Missing attachment.',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'returned');
+    }
+
+    public function test_bac_secretariat_can_move_under_review_to_for_budget_approval(): void
+    {
+        $bacSecretariat = $this->bacSecretariat();
+        $pr = $this->createPurchaseRequest($bacSecretariat, ['status' => 'under_review']);
+
+        $this->actingAs($bacSecretariat, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'for_budget_approval',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'for_budget_approval');
+    }
+
+    public function test_bac_secretariat_cannot_perform_ppu_only_transition(): void
+    {
+        // forwarded_to_ppu → pr_prepared is PPU's job, not BAC Secretariat's.
+        $bacSecretariat = $this->bacSecretariat();
+        $pr = $this->createPurchaseRequest($bacSecretariat, ['status' => 'forwarded_to_ppu']);
+
+        $this->actingAs($bacSecretariat, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'pr_prepared',
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_procurement_officer_can_no_longer_move_submitted_to_under_review(): void
+    {
+        // This capability moved to bac_secretariat when the roles were split.
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer, ['status' => 'submitted']);
+
+        $this->actingAs($officer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'under_review',
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_procurement_officer_can_no_longer_return_a_submitted_pr(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer, ['status' => 'submitted']);
+
+        $this->actingAs($officer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'returned',
+                'remarks' => 'Missing attachment.',
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_procurement_officer_can_no_longer_move_under_review_to_for_budget_approval(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer, ['status' => 'under_review']);
+
+        $this->actingAs($officer, 'sanctum')
+            ->putJson("/api/v1/purchase-requests/{$pr->id}", [
+                'status' => 'for_budget_approval',
             ])
             ->assertStatus(403);
     }
@@ -585,10 +683,10 @@ class PurchaseRequestTest extends TestCase
 
     public function test_remarks_captured_in_status_history_on_return(): void
     {
-        $officer = $this->procurementOfficer();
-        $pr = $this->createPurchaseRequest($officer, ['status' => 'submitted']);
+        $bacSecretariat = $this->bacSecretariat();
+        $pr = $this->createPurchaseRequest($bacSecretariat, ['status' => 'submitted']);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
                 'status' => 'returned',
                 'remarks' => 'Missing PPMP attachment.',
@@ -607,9 +705,9 @@ class PurchaseRequestTest extends TestCase
     // Notifications (C2)
     // -------------------------------------------------------------------------
 
-    public function test_notification_created_for_procurement_officer_on_submission(): void
+    public function test_notification_created_for_bac_secretariat_on_submission(): void
     {
-        $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $requester = $this->requester();
         $pr = $this->createPurchaseRequest($requester, ['status' => 'draft']);
 
@@ -620,7 +718,7 @@ class PurchaseRequestTest extends TestCase
             ->assertStatus(200);
 
         $this->assertDatabaseHas('notifications', [
-            'user_id' => $officer->id,
+            'user_id' => $bacSecretariat->id,
             'purchase_request_id' => $pr->id,
             'type' => 'pr_submitted',
         ]);
@@ -628,11 +726,11 @@ class PurchaseRequestTest extends TestCase
 
     public function test_notification_created_for_requester_on_return(): void
     {
-        $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $requester = $this->requester();
         $pr = $this->createPurchaseRequest($requester, ['status' => 'submitted']);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->putJson("/api/v1/purchase-requests/{$pr->id}", [
                 'status' => 'returned',
                 'remarks' => 'Incomplete submission.',

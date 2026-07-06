@@ -32,6 +32,13 @@ class BacResolutionTest extends TestCase
         return User::factory()->create(['role_id' => $role->id]);
     }
 
+    private function bacSecretariat(): User
+    {
+        $role = Role::where('name', 'bac_secretariat')->firstOrFail();
+
+        return User::factory()->create(['role_id' => $role->id]);
+    }
+
     private function officeId(): int
     {
         return Office::where('code', 'ORM')->value('id');
@@ -139,14 +146,15 @@ class BacResolutionTest extends TestCase
     public function test_store_creates_bac_resolution(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $abstract = $this->createAbstractOfQuotation($officer);
         $file = UploadedFile::fake()->create('res.pdf', 100, 'application/pdf');
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [
                 'resolution_number' => 'BAC-2026-001',
                 'abstract_of_quotation_id' => $abstract->id,
-                'prepared_by_id' => $officer->id,
+                'prepared_by_id' => $bacSecretariat->id,
                 'file' => $file,
             ])
             ->assertStatus(201)
@@ -156,9 +164,9 @@ class BacResolutionTest extends TestCase
 
     public function test_store_returns_422_when_required_fields_are_missing(): void
     {
-        $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Validation failed.')
@@ -168,15 +176,16 @@ class BacResolutionTest extends TestCase
     public function test_store_returns_422_when_abstract_already_has_resolution(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $abstract = $this->createAbstractOfQuotation($officer);
         $this->createBacResolution($abstract, $officer);
         $file = UploadedFile::fake()->create('dup.pdf', 100, 'application/pdf');
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [
                 'resolution_number' => 'BAC-DUPLICATE',
                 'abstract_of_quotation_id' => $abstract->id,
-                'prepared_by_id' => $officer->id,
+                'prepared_by_id' => $bacSecretariat->id,
                 'file' => $file,
             ])
             ->assertStatus(422)
@@ -190,14 +199,15 @@ class BacResolutionTest extends TestCase
     public function test_file_path_not_exposed_but_download_url_present(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $abstract = $this->createAbstractOfQuotation($officer);
         $file = UploadedFile::fake()->create('res.pdf', 100, 'application/pdf');
 
-        $response = $this->actingAs($officer, 'sanctum')
+        $response = $this->actingAs($bacSecretariat, 'sanctum')
             ->postJson('/api/v1/bac-resolutions', [
                 'resolution_number' => 'BAC-2026-002',
                 'abstract_of_quotation_id' => $abstract->id,
-                'prepared_by_id' => $officer->id,
+                'prepared_by_id' => $bacSecretariat->id,
                 'file' => $file,
             ]);
 
@@ -235,13 +245,14 @@ class BacResolutionTest extends TestCase
     public function test_file_deleted_from_disk_on_destroy(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $abstract = $this->createAbstractOfQuotation($officer);
         $resolution = $this->createBacResolution($abstract, $officer);
         $path = $resolution->file_path;
 
         Storage::disk('private')->assertExists($path);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->deleteJson("/api/v1/bac-resolutions/{$resolution->id}")
             ->assertStatus(200);
 
@@ -281,10 +292,11 @@ class BacResolutionTest extends TestCase
     public function test_update_modifies_bac_resolution(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $abstract = $this->createAbstractOfQuotation($officer);
         $resolution = $this->createBacResolution($abstract, $officer);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->patchJson("/api/v1/bac-resolutions/{$resolution->id}", [
                 'resolution_number' => 'BAC-UPDATED',
             ])
@@ -299,10 +311,11 @@ class BacResolutionTest extends TestCase
     public function test_destroy_deletes_bac_resolution(): void
     {
         $officer = $this->procurementOfficer();
+        $bacSecretariat = $this->bacSecretariat();
         $abstract = $this->createAbstractOfQuotation($officer);
         $resolution = $this->createBacResolution($abstract, $officer);
 
-        $this->actingAs($officer, 'sanctum')
+        $this->actingAs($bacSecretariat, 'sanctum')
             ->deleteJson("/api/v1/bac-resolutions/{$resolution->id}")
             ->assertStatus(200)
             ->assertJsonPath('data', null);

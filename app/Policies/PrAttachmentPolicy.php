@@ -22,7 +22,7 @@ final class PrAttachmentPolicy
 
     public function view(User $user, PrAttachment $attachment): bool
     {
-        if (in_array($user->role?->name, ['procurement_officer', 'budget_officer'], true)) {
+        if (in_array($user->role?->name, ['procurement_officer', 'budget_officer', 'bac_secretariat'], true)) {
             return true;
         }
 

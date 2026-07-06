@@ -21,16 +21,16 @@ final class NoticeOfAwardPolicy
 
     public function create(User $user): bool
     {
-        return $user->role?->name === 'procurement_officer';
+        return $user->role?->name === 'bac_secretariat';
     }
 
     public function update(User $user, NoticeOfAward $noticeOfAward): bool
     {
-        return $user->role?->name === 'procurement_officer';
+        return $user->role?->name === 'bac_secretariat';
     }
 
     public function delete(User $user, NoticeOfAward $noticeOfAward): bool
     {
-        return $user->role?->name === 'procurement_officer';
+        return $user->role?->name === 'bac_secretariat';
     }
 }

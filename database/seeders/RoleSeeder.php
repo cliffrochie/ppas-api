@@ -13,7 +13,8 @@ class RoleSeeder extends Seeder
     {
         $roles = [
             ['name' => 'requester', 'description' => 'End-user / requesting unit personnel who submits procurement requests'],
-            ['name' => 'procurement_officer', 'description' => 'Property and Procurement Unit (PPU) / BAC Secretariat'],
+            ['name' => 'procurement_officer', 'description' => 'Property and Procurement Unit (PPU)'],
+            ['name' => 'bac_secretariat', 'description' => 'Bids and Awards Committee Secretariat — reviews requests for completeness and prepares BAC Resolutions/Notices of Award'],
             ['name' => 'budget_officer', 'description' => 'Budget Section — validates fund availability and encodes ALOBS'],
         ];
 

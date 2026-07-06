@@ -94,7 +94,7 @@ final class NotificationService
         return match ($toStatus) {
             'submitted' => [
                 'audience' => 'role',
-                'role' => 'procurement_officer',
+                'role' => 'bac_secretariat',
                 'type' => 'pr_submitted',
                 'title' => 'New Request Submitted',
                 'message' => 'A new procurement request has been submitted and is awaiting BAC Secretariat review.',
