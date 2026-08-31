@@ -19,7 +19,7 @@ This is a Laravel 13 REST API for the Procurement Process Automation System (PPA
 - `Resolution/` — BacResolutionController, NoticeOfAwardController
 - `Monitoring/` — NotificationController, AuditLogController, LoginLogController
 
-**Models use PHP 8 class attributes:** `#[Fillable([...])]` and `#[Hidden([...])]` instead of `$fillable`/`$hidden` array properties (Laravel 13 style).
+**Models use `$fillable` / `$hidden` array properties** (not the `#[Fillable]` / `#[Hidden]` PHP-8 attributes — converted 2026-08-31 to match the ICT blueprint `backend-laravel.md` / `security.md`, which mandate `$fillable` and prohibit `$guarded`). `casts()` method, relationships, and scopes as normal. Auto-generated identifiers are kept out of `$fillable` and set via `forceFill()` in services.
 
 **Auto-generated fields (never accept from user input):**
 - `rf_number`, `pr_number` on PurchaseRequest
@@ -41,7 +41,7 @@ This is a Laravel 13 REST API for the Procurement Process Automation System (PPA
 - Form Requests `authorize()` handles `create` (store) and `update` checks.
 - Controllers call `$this->authorize('viewAny', Model::class)` in `index()`, `$this->authorize('view', $model)` in `show()`, and `$this->authorize('delete', $model)` in `destroy()`.
 
-**Three roles (name values in DB):** `requester`, `procurement_officer`, `budget_officer`.
+**Four roles (name values in DB):** `requester`, `procurement_officer`, `bac_secretariat`, `budget_officer`. `bac_secretariat` (BAC Secretariat) was split out of `procurement_officer` after the initial build: it owns the completeness-review transitions (`submitted → under_review`, `→ returned`, `under_review → for_budget_approval`, `under_review → returned`, `abstract_prepared → bac_resolution_noa`) and is the only role that can author BAC Resolutions and Notices of Award. `procurement_officer` keeps PR/RFQ/PO preparation and the `forwarded_to_ppu → … → completed` transitions. Source of truth: [[ppas-policies]] and `app/Support/PurchaseRequestTransitions.php`.
 
 **Test database:** Uses `ppas_test` MySQL database (not SQLite — pdo_sqlite driver is not installed on this server). phpunit.xml configured to use MySQL with DB_DATABASE=ppas_test. Tests use `RefreshDatabase` + seed `RoleSeeder` and `OfficeSeeder` in the base `TestCase::setUp()`.
 

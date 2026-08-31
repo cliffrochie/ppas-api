@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable([
-    'rfq_id',
-    'pr_item_id',
-    'item_description',
-    'unit_of_measure',
-    'quantity',
-])]
 class RfqItem extends Model
 {
+    protected $fillable = [
+        'rfq_id',
+        'pr_item_id',
+        'item_description',
+        'unit_of_measure',
+        'quantity',
+    ];
+
     public function rfq(): BelongsTo
     {
         return $this->belongsTo(Rfq::class);

@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable([
-    'purchase_request_id',
-    'prepared_by_id',
-    'rfq_number',
-    'deadline',
-    'status',
-    'file_path',
-])]
 class Rfq extends Model
 {
     protected $table = 'rfqs';
+
+    protected $fillable = [
+        'purchase_request_id',
+        'prepared_by_id',
+        'rfq_number',
+        'deadline',
+        'status',
+        'file_path',
+    ];
 
     public function purchaseRequest(): BelongsTo
     {

@@ -32,7 +32,8 @@ final class UpdateSupplierRequest extends FormRequest
             'tags.*'           => ['string', 'max:100'],
             // Ignore the current supplier's own email in the unique constraint.
             'email'            => ['sometimes', 'email', 'max:255', Rule::unique('suppliers', 'email')->ignore($supplier->id)],
-            'logo'             => ['sometimes', 'nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,svg,webp'],
+            // svg excluded — it can carry inline scripts (stored-XSS vector on upload).
+            'logo'             => ['sometimes', 'nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp'],
             'contact_person'   => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone'            => ['sometimes', 'nullable', 'string', 'max:50'],
             'address_street'   => ['sometimes', 'nullable', 'string', 'max:255'],

@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable([
-    'resolution_number',
-    'abstract_of_quotation_id',
-    'prepared_by_id',
-    'file_path',
-    'issued_at',
-])]
 class BacResolution extends Model
 {
+    protected $fillable = [
+        'resolution_number',
+        'abstract_of_quotation_id',
+        'prepared_by_id',
+        'file_path',
+        'issued_at',
+    ];
+
     public function abstractOfQuotation(): BelongsTo
     {
         return $this->belongsTo(AbstractOfQuotation::class);

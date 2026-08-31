@@ -170,7 +170,7 @@ final class PurchaseRequestService
                 $validated['submitted_at'] = now();
 
                 if ($purchaseRequest->rf_number === null) {
-                    // rf_number is not in #[Fillable] — forceFill writes it below.
+                    // rf_number is not in $fillable — forceFill writes it below.
                     $validated['rf_number'] = $this->numberGenerator->generate('RF');
                 }
             }
@@ -182,7 +182,7 @@ final class PurchaseRequestService
             // ------------------------------------------------------------------
             if (isset($validated['status']) && $validated['status'] === 'pr_prepared') {
                 if ($purchaseRequest->pr_number === null) {
-                    // pr_number is not in #[Fillable] — forceFill writes it below.
+                    // pr_number is not in $fillable — forceFill writes it below.
                     $validated['pr_number'] = $this->numberGenerator->generate('PR');
                 }
             }
@@ -193,7 +193,7 @@ final class PurchaseRequestService
             $remarks = $validated['remarks'] ?? null;
             unset($validated['remarks']);
 
-            // Use forceFill so rf_number / pr_number (not in #[Fillable]) can be
+            // Use forceFill so rf_number / pr_number (not in $fillable) can be
             // written in one shot alongside the rest of the validated payload.
             $purchaseRequest->forceFill($validated)->save();
             $purchaseRequest->refresh()->load(['requester', 'requestingOffice', 'category']);

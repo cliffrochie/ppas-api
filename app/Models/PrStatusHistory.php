@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'purchase_request_id',
-    'actor_id',
-    'from_status',
-    'to_status',
-    'remarks',
-    'alobs_number',
-    'acted_at',
-])]
 class PrStatusHistory extends Model
 {
+    protected $fillable = [
+        'purchase_request_id',
+        'actor_id',
+        'from_status',
+        'to_status',
+        'remarks',
+        'alobs_number',
+        'acted_at',
+    ];
+
     // Append-only audit log — no updated_at column.
     public $timestamps = false;
 

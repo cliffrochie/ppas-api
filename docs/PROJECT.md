@@ -54,9 +54,8 @@ The API is **API-first** — no server-rendered HTML for data. All responses fol
 | Language | PHP 8.3+ |
 | Framework | Laravel 13.x |
 | Auth | Laravel Sanctum (Bearer token) |
-| Database (local/test) | SQLite (in-memory for tests) |
-| Database (production) | MySQL (compatible — dual SQL paths in DashboardService) |
-| Testing | PHPUnit 12 |
+| Database (local / test / production) | MySQL — `pdo_sqlite` is not available on the dev/CI server; `phpunit.xml` runs against a MySQL schema named `ppas_test` |
+| Testing | PHPUnit 12 (`RefreshDatabase`; `RoleSeeder` + `OfficeSeeder` seeded in `tests/TestCase::setUp()`). **Deviation:** blueprint mandates Pest — using PHPUnit until `pestphp/pest` supports `phpunit ^12.5`. |
 | Code style | Laravel Pint |
 | PDF generation | Blade templates → streamed HTTP response |
 | File storage | Laravel private disk (files never on public URL) |
@@ -110,7 +109,7 @@ ppas-api/
 │   │   │   └── RFQ/
 │   │   └── Resources/                             # API Resources — shape of JSON output
 │   │       └── *.php                              # One resource per model
-│   ├── Models/                                    # Eloquent models (PHP 8 #[Fillable] attrs)
+│   ├── Models/                                    # Eloquent models ($fillable/$hidden props, casts, relations)
 │   ├── Policies/                                  # Gate/Policy — per-model authorization
 │   ├── Providers/
 │   │   └── AppServiceProvider.php                 # Policy registration
@@ -178,9 +177,11 @@ The API uses **Laravel Sanctum Bearer tokens**.
 Authorization: Bearer <token>
 ```
 
-**Logout:** `POST /api/v1/auth/logout` — revokes the current token server-side.
+**Logout:** `DELETE /api/v1/auth/logout` — revokes the current token server-side (that token only, not all sessions).
 
-**Rate limiting on login:** 10 requests per minute per IP. Exceeding this returns HTTP 429.
+**Token lifetime:** Access tokens expire after `SANCTUM_EXPIRATION` minutes (default 60). There is no refresh endpoint — on a 401 the client clears auth state and routes the user back through login.
+
+**Rate limiting on login/register:** 5 requests per 5 minutes per IP. Exceeding this returns HTTP 429.
 
 **Fetch authenticated user:** `GET /api/v1/auth/me` — returns the full `UserResource` with `role` and `office` loaded.
 
@@ -292,7 +293,7 @@ Pass `?page=N` to navigate pages. Default page size is **15**.
 | Method | Endpoint | Auth required | Description |
 |---|---|---|---|
 | POST | `/auth/login` | No | Login; returns `{ token, user }` |
-| POST | `/auth/logout` | Yes | Revoke current token |
+| DELETE | `/auth/logout` | Yes | Revoke current token |
 | GET | `/auth/me` | Yes | Get authenticated user with role + office |
 
 **Login request body:**
@@ -686,14 +687,16 @@ draft
 
 ## 7. Roles & Permissions
 
-The system has four named roles. Role names are stored in the `roles` table and referenced via `User.role_id`.
+The system has four named roles, seeded by `RoleSeeder`. Role names are stored in the `roles` table and referenced via `User.role_id`.
 
 | Role | Name key | Primary responsibilities |
 |---|---|---|
 | Requester | `requester` | Create and submit purchase requests |
-| Procurement Officer | `procurement_officer` | Review PRs, manage RFQs, POs, resolutions |
-| Budget Officer | `budget_officer` | Budget approval, encode ALOBS, forward to PPU |
-| Admin | `admin` | User management, system config |
+| Procurement Officer (PPU) | `procurement_officer` | Property and Procurement Unit — prepares PRs, RFQs, POs; runs canvassing |
+| BAC Secretariat | `bac_secretariat` | Bids and Awards Committee Secretariat — reviews submitted requests for completeness, moves them through review/return, prepares BAC Resolutions and Notices of Award |
+| Budget Officer | `budget_officer` | Budget Section — validates fund availability, encodes ALOBS, forwards to PPU |
+
+> There is no `admin` role. User management and system config are gated by policy on `procurement_officer` (full CRUD) with `requester` / `bac_secretariat` / `budget_officer` limited to read.
 
 **Visibility rule:** Requesters see only their own PRs (including drafts). All other roles see all non-draft PRs.
 
@@ -942,4 +945,4 @@ HTTP Request
 
 ---
 
-*Last updated: 2026-06-30*
+*Last updated: 2026-08-31*

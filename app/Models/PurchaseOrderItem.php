@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'purchase_order_id',
-    'pr_item_id',
-    'item_description',
-    'unit_of_measure',
-    'quantity',
-    'unit_cost',
-    'total_cost',
-])]
 class PurchaseOrderItem extends Model
 {
+    protected $fillable = [
+        'purchase_order_id',
+        'pr_item_id',
+        'item_description',
+        'unit_of_measure',
+        'quantity',
+        'unit_cost',
+        'total_cost',
+    ];
+
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);

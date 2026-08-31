@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'user_id',
-    'purchase_request_id',
-    'type',
-    'title',
-    'message',
-    'is_read',
-    'read_at',
-])]
 class Notification extends Model
 {
+    protected $fillable = [
+        'user_id',
+        'purchase_request_id',
+        'type',
+        'title',
+        'message',
+        'is_read',
+        'read_at',
+    ];
+
     // Immutable once created — no updated_at column.
     public $timestamps = false;
 

@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'supplier_id',
-    'uploader_id',
-    'file_name',
-    'file_path',
-    'file_size',
-    'mime_type',
-    'uploaded_at',
-])]
 class SupplierDocument extends Model
 {
+    protected $fillable = [
+        'supplier_id',
+        'uploader_id',
+        'file_name',
+        'file_path',
+        'file_size',
+        'mime_type',
+        'uploaded_at',
+    ];
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
