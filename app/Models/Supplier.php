@@ -4,31 +4,31 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable([
-    'name',
-    'tin_number',
-    'category_id',
-    'website',
-    'tags',
-    'logo_path',
-    'contact_person',
-    'email',
-    'phone',
-    'address_street',
-    'address_city',
-    'address_province',
-    'address_zip',
-    'on_time_delivery_rate',
-    'defect_rate',
-    'is_active',
-])]
 class Supplier extends Model
 {
+    protected $fillable = [
+        'name',
+        'tin_number',
+        'category_id',
+        'website',
+        'tags',
+        'logo_path',
+        'contact_person',
+        'email',
+        'phone',
+        'address_street',
+        'address_city',
+        'address_province',
+        'address_zip',
+        'on_time_delivery_rate',
+        'defect_rate',
+        'is_active',
+    ];
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

@@ -4,26 +4,26 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable([
-    'requester_id',
-    'requesting_office_id',
-    'category_id',
-    'purpose',
-    'status',
-    'alobs_number',
-    'total_amount',
-    'submitted_at',
-    'requires_philgeps',
-])]
 class PurchaseRequest extends Model
 {
+    protected $fillable = [
+        'requester_id',
+        'requesting_office_id',
+        'category_id',
+        'purpose',
+        'status',
+        'alobs_number',
+        'total_amount',
+        'submitted_at',
+        'requires_philgeps',
+    ];
+
     /**
      * Automatically compute `requires_philgeps` before every save.
      * Requests with a total amount of ₱50,000 or more require mandatory PhilGEPS posting

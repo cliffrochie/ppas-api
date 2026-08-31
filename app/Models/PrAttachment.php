@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'purchase_request_id',
-    'uploader_id',
-    'type',
-    'file_name',
-    'file_path',
-    'file_size',
-    'mime_type',
-    'uploaded_at',
-])]
 class PrAttachment extends Model
 {
+    protected $fillable = [
+        'purchase_request_id',
+        'uploader_id',
+        'type',
+        'file_name',
+        'file_path',
+        'file_size',
+        'mime_type',
+        'uploaded_at',
+    ];
+
     public function purchaseRequest(): BelongsTo
     {
         return $this->belongsTo(PurchaseRequest::class);

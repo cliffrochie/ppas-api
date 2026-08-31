@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'user_id',
-    'email',
-    'status',
-    'ip_address',
-    'user_agent',
-])]
 class LoginLog extends Model
 {
+    protected $fillable = [
+        'user_id',
+        'email',
+        'status',
+        'ip_address',
+        'user_agent',
+    ];
+
     // Append-only — no updated_at column.
     public $timestamps = false;
 

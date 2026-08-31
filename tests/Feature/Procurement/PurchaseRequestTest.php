@@ -435,7 +435,7 @@ class PurchaseRequestTest extends TestCase
         $requester = $this->requester();
         $year = now()->year;
 
-        // rf_number is not in #[Fillable] so it cannot be set via create().
+        // rf_number is not in $fillable so it cannot be set via create().
         // Use forceFill after creation to seed the value directly.
         $pr = $this->createPurchaseRequest($requester, ['status' => 'returned']);
         $pr->forceFill(['rf_number' => "RF-{$year}-00042"])->save();
