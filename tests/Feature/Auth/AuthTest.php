@@ -58,7 +58,7 @@ class AuthTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/v1/auth/logout
+    // DELETE /api/v1/auth/logout
     // -------------------------------------------------------------------------
 
     public function test_logout_revokes_token(): void
@@ -68,7 +68,7 @@ class AuthTest extends TestCase
         $plainToken = $tokenResult->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$plainToken}")
-            ->postJson('/api/v1/auth/logout');
+            ->deleteJson('/api/v1/auth/logout');
 
         $response->assertStatus(200)
             ->assertJsonPath('data', null)
@@ -82,7 +82,7 @@ class AuthTest extends TestCase
 
     public function test_logout_returns_401_without_token(): void
     {
-        $this->postJson('/api/v1/auth/logout')
+        $this->deleteJson('/api/v1/auth/logout')
             ->assertStatus(401);
     }
 

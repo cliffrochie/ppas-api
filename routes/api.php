@@ -33,17 +33,18 @@ Route::prefix('v1')->group(function (): void {
     // Auth endpoints — unauthenticated (login is public, rate-limited)
     // -------------------------------------------------------------------------
     Route::prefix('auth')->name('auth.')->group(function (): void {
-        // throttle:10,1 = 10 attempts per minute per IP (security.md requirement)
+        // throttle:5,5 = 5 attempts per 5 minutes per IP (security.md rate-limit table)
         Route::post('login', [AuthController::class, 'login'])
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:5,5')
             ->name('login');
 
         Route::post('register', [AuthController::class, 'register'])
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:5,5')
             ->name('register');
 
         Route::middleware('auth:sanctum')->group(function (): void {
-            Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+            // Blueprint auth contract: DELETE /api/v1/auth/logout — revokes the current token only.
+            Route::delete('logout', [AuthController::class, 'logout'])->name('logout');
             Route::get('me', [AuthController::class, 'me'])->name('me');
         });
     });

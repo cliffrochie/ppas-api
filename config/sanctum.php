@@ -48,9 +48,12 @@ return [
     | considered expired. This will override any values set in the token's
     | "expires_at" attribute, but first-party sessions are not affected.
     |
+    | ICT blueprint (security.md): access tokens are short-lived (15-60 min),
+    | there is no refresh endpoint, and the client re-authenticates on 401.
+    |
     */
 
-    'expiration' => null,
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 60),
 
     /*
     |--------------------------------------------------------------------------
