@@ -35,17 +35,23 @@ php artisan pail
 
 ## Architecture
 
-**Stack:** PHP 8.3+, Laravel 13.x, SQLite (default for local/test), PHPUnit 12, Pint (code style), Pail (log viewer), Vite.
+**Stack:** PHP 8.3+, Laravel 13.x, MySQL (local and test — `pdo_sqlite` is not available on the dev/CI server), Laravel Sanctum (Bearer token auth), PHPUnit 12, Pint (code style), Pail (log viewer), Vite, Scramble (`dedoc/scramble` — OpenAPI docs generation).
 
-**API-first design:** `bootstrap/app.php` already configures all `api/*` routes to return JSON error responses — no additional exception handling setup needed for API routes.
+**API-first design:** `bootstrap/app.php` configures all `api/*` routes to return JSON error responses via `shouldRenderJsonWhen()` plus per-exception `render()` callbacks that emit the shared `{ data, message, errors }` envelope (401/403/404/422/500). No additional exception handling setup is needed for API routes.
 
-**No API routes file yet:** Only `routes/web.php` and `routes/console.php` exist. When adding API endpoints, register `api: __DIR__.'/../routes/api.php'` in `bootstrap/app.php`'s `withRouting()` call and create `routes/api.php`.
+**API routes:** All endpoints live in `routes/api.php`, registered in `bootstrap/app.php`'s `withRouting()` call (`apiPrefix: 'api'`). Every route sits under a `Route::prefix('v1')` group, so the effective prefix is `/api/v1/`. Controllers are grouped by domain under `app/Http/Controllers/V1/<Domain>/` (Auth, Config, Procurement, RFQ, Resolution, Monitoring) plus a top-level `DashboardController`.
 
-**Models use PHP 8 attributes:** The `User` model uses `#[Fillable]` and `#[Hidden]` class-level attributes (Laravel 13 style) instead of `$fillable`/`$hidden` array properties. Follow this pattern for new models.
+**Request lifecycle:** thin `final` controllers → Services (`app/Services/` — all business logic, every mutation wrapped in `DB::transaction()`) → Eloquent models → API Resources (`app/Http/Resources/` — shape the JSON, exclude file-path columns). Authorization is enforced by Policies in `app/Policies/`, registered in `AppServiceProvider::boot()` via `Gate::policy()`, and called as `$this->authorize()` in controller `index`/`show`/`destroy` and as `authorize()` in the store/update FormRequests.
 
-**Testing environment:** `phpunit.xml` configures an in-memory SQLite database (`DB_DATABASE=:memory:`) for all tests — no separate test database setup required.
+**Models:** define `$fillable` (never `$guarded`) and `$hidden` as array properties, plus `casts()`, relationships, and scopes — per the ICT blueprint (`backend-laravel.md` coding standards, `security.md` mass-assignment rule). Auto-generated identifiers (`rf_number`, `pr_number`, `po_number`, `rfq_number`) are deliberately excluded from `$fillable` and written via `forceFill()` in the service layer. Append-only models (`PrStatusHistory`, `AuditLog`, `LoginLog`, `Notification`) set `public $timestamps = false` (no `updated_at`) and have no write endpoints.
+
+**Testing environment:** `phpunit.xml` points at a MySQL database named `ppas_test` (`DB_CONNECTION=mysql`) — create that schema once before running the suite. Tests use `RefreshDatabase` and seed `RoleSeeder` + `OfficeSeeder` in `tests/TestCase::setUp()`.
+
+> `DEVIATION: the ICT blueprint (conventions.md, backend-laravel.md) mandates Pest for Laravel tests. This project uses plain PHPUnit 12 feature tests because pestphp/pest is incompatible with phpunit ^12.5.12 (as of 2026-06). Revisit once Pest ships PHPUnit 12 support. Impact: test files are class-based (tests/Feature/**/*Test.php), not Pest closures; assertions and coverage expectations are otherwise unchanged.`
 
 **Queue and cache:** Default driver is `database` in `.env.example`. Tests override this to `sync` and `array` respectively via `phpunit.xml`.
+
+**Full API contract:** `docs/PROJECT.md` is the authoritative reference for the response envelope, pagination shape, per-domain endpoints, the Purchase Request lifecycle state machine, and role permissions.
 
 **Dependency manager scripts:**
 - `composer run setup` — full first-time bootstrap (install, key gen, migrate, npm install + build)
