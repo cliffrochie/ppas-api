@@ -27,7 +27,7 @@ final class RfqService
         $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 
         return Rfq::with(['preparedBy', 'purchaseRequest'])
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('rfq_number', 'like', "%{$v}%"))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))

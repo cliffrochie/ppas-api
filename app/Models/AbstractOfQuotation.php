@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AbstractOfQuotation extends Model
 {
+    use Searchable;
+
     protected $table = 'abstracts_of_quotation';
 
     protected $fillable = [
@@ -21,6 +24,9 @@ class AbstractOfQuotation extends Model
         'file_path',
         'approved_at',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['recommended_supplier'];
 
     public function rfq(): BelongsTo
     {

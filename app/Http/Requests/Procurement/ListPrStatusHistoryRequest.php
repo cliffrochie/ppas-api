@@ -16,6 +16,7 @@ final class ListPrStatusHistoryRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'purchase_request_id' => ['sometimes', 'nullable', 'integer', 'exists:purchase_requests,id'],
             'actor_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'from_status' => ['sometimes', 'nullable', 'string', 'max:50'],

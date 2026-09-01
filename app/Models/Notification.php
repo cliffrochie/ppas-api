@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Notification extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'user_id',
         'purchase_request_id',
@@ -18,6 +21,9 @@ class Notification extends Model
         'is_read',
         'read_at',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['title', 'message'];
 
     // Immutable once created — no updated_at column.
     public $timestamps = false;

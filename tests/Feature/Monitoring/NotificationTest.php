@@ -112,6 +112,30 @@ class NotificationTest extends TestCase
         $this->assertCount(1, $response->json('data'));
     }
 
+    public function test_index_filters_by_search_matches_title(): void
+    {
+        $officer = $this->procurementOfficer();
+        $actor = $this->procurementOfficer();
+        $this->createNotification($officer, $actor); // title: "PR Submitted"
+
+        Notification::create([
+            'user_id' => $officer->id,
+            'type' => 'pr_status_changed',
+            'title' => 'Budget Certified',
+            'message' => 'Funds are available.',
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/notifications?search=Submitted');
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertCount(1, $data);
+        $this->assertStringContainsStringIgnoringCase('submitted', $data[0]['title']);
+    }
+
     // -------------------------------------------------------------------------
     // GET /api/v1/notifications/{notification} — show
     // -------------------------------------------------------------------------

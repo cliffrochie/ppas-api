@@ -87,6 +87,23 @@ class PurchaseOrderItemTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_search_matches_item_description(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $po      = $this->createPurchaseOrder($pr, $officer);
+
+        PurchaseOrderItem::create(['purchase_order_id' => $po->id, 'item_description' => 'Bond Paper A4', 'unit_of_measure' => 'ream', 'quantity' => 5, 'unit_cost' => 200.00, 'total_cost' => 1000.00]);
+        PurchaseOrderItem::create(['purchase_order_id' => $po->id, 'item_description' => 'Ballpoint Pens', 'unit_of_measure' => 'box', 'quantity' => 3, 'unit_cost' => 150.00, 'total_cost' => 450.00]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/purchase-order-items?search=bond');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertStringContainsStringIgnoringCase('bond', $response->json('data.0.item_description'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/purchase-order-items — store
     // -------------------------------------------------------------------------

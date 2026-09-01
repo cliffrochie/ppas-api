@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SupplierDocument extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'supplier_id',
         'uploader_id',
@@ -18,6 +21,9 @@ class SupplierDocument extends Model
         'mime_type',
         'uploaded_at',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['file_name'];
 
     public function supplier(): BelongsTo
     {

@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PurchaseOrderItem extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'purchase_order_id',
         'pr_item_id',
@@ -18,6 +21,9 @@ class PurchaseOrderItem extends Model
         'unit_cost',
         'total_cost',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['item_description'];
 
     public function purchaseOrder(): BelongsTo
     {

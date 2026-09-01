@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Supplier extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'name',
         'tin_number',
@@ -28,6 +31,9 @@ class Supplier extends Model
         'defect_rate',
         'is_active',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['name', 'tin_number', 'email', 'contact_person'];
 
     public function category(): BelongsTo
     {

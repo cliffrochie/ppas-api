@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Concerns\Searchable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, Searchable;
 
     protected $fillable = [
         'first_name',
@@ -30,6 +31,9 @@ class User extends Authenticatable
         'office_id',
         'is_active',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['first_name', 'last_name', 'email'];
 
     protected $hidden = [
         'password',

@@ -24,12 +24,7 @@ final class SupplierService
         $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 
         return Supplier::with(['category'])
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
-                fn ($q) => $q->where('name', 'like', "%{$v}%")
-                    ->orWhere('tin_number', 'like', "%{$v}%")
-                    ->orWhere('email', 'like', "%{$v}%")
-                    ->orWhere('contact_person', 'like', "%{$v}%")
-            ))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
             ->when(array_key_exists('is_active', $filters), fn ($q) => $q->where('is_active', $filters['is_active']))
             ->when($filters['address_city'] ?? null, fn ($q, $v) => $q->where('address_city', 'like', "%{$v}%"))

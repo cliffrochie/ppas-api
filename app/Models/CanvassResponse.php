@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CanvassResponse extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'rfq_id',
         'rfq_item_id',
@@ -17,6 +20,9 @@ class CanvassResponse extends Model
         'total_price',
         'notes',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['supplier_name'];
 
     public function rfq(): BelongsTo
     {

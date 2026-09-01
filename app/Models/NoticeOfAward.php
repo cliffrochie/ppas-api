@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class NoticeOfAward extends Model
 {
+    use Searchable;
+
     protected $table = 'notices_of_award';
 
     protected $fillable = [
@@ -19,6 +22,9 @@ class NoticeOfAward extends Model
         'file_path',
         'issued_at',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['awarded_supplier', 'noa_number'];
 
     public function bacResolution(): BelongsTo
     {

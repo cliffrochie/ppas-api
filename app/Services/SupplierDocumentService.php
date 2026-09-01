@@ -27,6 +27,7 @@ final class SupplierDocumentService
             ->when($filters['supplier_id'] ?? null, fn ($q, $v) => $q->where('supplier_id', $v))
             ->when($filters['uploader_id'] ?? null, fn ($q, $v) => $q->where('uploader_id', $v))
             ->when($filters['mime_type'] ?? null, fn ($q, $v) => $q->where('mime_type', 'like', "%{$v}%"))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '<=', $v))
             ->when(

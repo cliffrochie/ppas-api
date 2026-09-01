@@ -26,7 +26,7 @@ final class BacResolutionService
         return BacResolution::with(['preparedBy', 'abstractOfQuotation'])
             ->when($filters['abstract_of_quotation_id'] ?? null, fn ($q, $v) => $q->where('abstract_of_quotation_id', $v))
             ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('resolution_number', 'like', "%{$v}%"))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '<=', $v))
             ->when(

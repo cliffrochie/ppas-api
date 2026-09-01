@@ -102,6 +102,24 @@ class RfqItemTest extends TestCase
             ->assertJsonPath('errors', null);
     }
 
+    public function test_index_filters_by_search_matches_item_description(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr      = $this->createPurchaseRequest($officer);
+        $rfq     = $this->createRfq($pr, $officer);
+        $prItem  = $this->createPrItem($pr);
+
+        RfqItem::create(['rfq_id' => $rfq->id, 'pr_item_id' => $prItem->id, 'item_description' => 'Bond Paper A4', 'unit_of_measure' => 'ream', 'quantity' => 10]);
+        RfqItem::create(['rfq_id' => $rfq->id, 'pr_item_id' => $prItem->id, 'item_description' => 'Ballpoint Pens', 'unit_of_measure' => 'box', 'quantity' => 4]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/rfq-items?search=bond');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertStringContainsStringIgnoringCase('bond', $response->json('data.0.item_description'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/rfq-items — store
     // -------------------------------------------------------------------------

@@ -91,6 +91,27 @@ class PrStatusHistoryTest extends TestCase
         $this->assertEquals('submitted', $response->json('data.0.to_status'));
     }
 
+    public function test_index_filters_by_search_matches_remarks(): void
+    {
+        $officer = $this->procurementOfficer();
+        $pr = PurchaseRequest::create([
+            'requester_id' => $officer->id,
+            'requesting_office_id' => $this->officeId(),
+            'purpose' => 'Test PR',
+            'status' => 'under_review',
+        ]);
+
+        PrStatusHistory::create(['purchase_request_id' => $pr->id, 'actor_id' => $officer->id, 'to_status' => 'submitted', 'remarks' => 'Endorsed to budget office', 'acted_at' => now()]);
+        PrStatusHistory::create(['purchase_request_id' => $pr->id, 'actor_id' => $officer->id, 'to_status' => 'under_review', 'remarks' => 'Returned for correction', 'acted_at' => now()]);
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/pr-status-histories?search=endorsed');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertStringContainsStringIgnoringCase('endorsed', $response->json('data.0.remarks'));
+    }
+
     public function test_index_filters_by_purchase_request_id(): void
     {
         $officer = $this->procurementOfficer();

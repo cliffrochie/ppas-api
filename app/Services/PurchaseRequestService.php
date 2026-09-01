@@ -117,12 +117,7 @@ final class PurchaseRequestService
         }
 
         $query
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
-                fn ($q) => $q->where('purpose', 'like', "%{$v}%")
-                    ->orWhere('pr_number', 'like', "%{$v}%")
-                    ->orWhere('rf_number', 'like', "%{$v}%")
-                    ->orWhere('alobs_number', 'like', "%{$v}%")
-            ))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
             ->when($filters['requesting_office_id'] ?? null, fn ($q, $v) => $q->where('requesting_office_id', $v))

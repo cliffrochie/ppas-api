@@ -16,6 +16,7 @@ final class ListSupplierDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'supplier_id' => ['sometimes', 'nullable', 'integer', 'exists:suppliers,id'],
             'uploader_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'mime_type' => ['sometimes', 'nullable', 'string', 'max:100'],
