@@ -12,16 +12,27 @@ use Illuminate\Support\Facades\Storage;
 
 final class AbstractOfQuotationService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'rfq_id', 'prepared_by_id', 'recommended_supplier', 'recommended_amount', 'status', 'approved_at', 'created_at', 'updated_at',
+    ];
+
     public function __construct(private readonly Request $request) {}
 
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return AbstractOfQuotation::with(['preparedBy', 'rfq'])
             ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
             ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('recommended_supplier', 'like', "%{$v}%"))
-            ->latest()
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            )
             ->paginate(15);
     }
 

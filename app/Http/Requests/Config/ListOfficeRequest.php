@@ -17,6 +17,8 @@ final class ListOfficeRequest extends FormRequest
     {
         return [
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,name,code,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

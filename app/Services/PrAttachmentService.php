@@ -12,17 +12,28 @@ use Illuminate\Support\Facades\Storage;
 
 final class PrAttachmentService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'purchase_request_id', 'uploader_id', 'type', 'file_name', 'file_size', 'mime_type', 'uploaded_at', 'created_at', 'updated_at',
+    ];
+
     public function __construct(private readonly Request $request) {}
 
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return PrAttachment::with(['uploader'])
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
             ->when($filters['uploader_id'] ?? null, fn ($q, $v) => $q->where('uploader_id', $v))
             ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '<=', $v))
-            ->orderByDesc('uploaded_at')
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->orderByDesc('uploaded_at')
+            )
             ->paginate(15);
     }
 

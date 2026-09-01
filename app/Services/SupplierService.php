@@ -12,10 +12,17 @@ use Illuminate\Support\Facades\Storage;
 
 final class SupplierService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'name', 'tin_number', 'category_id', 'contact_person', 'email', 'phone', 'address_city', 'address_province', 'on_time_delivery_rate', 'defect_rate', 'is_active', 'created_at', 'updated_at',
+    ];
+
     public function __construct(private readonly Request $request) {}
 
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return Supplier::with(['category'])
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
                 fn ($q) => $q->where('name', 'like', "%{$v}%")
@@ -27,7 +34,11 @@ final class SupplierService
             ->when(array_key_exists('is_active', $filters), fn ($q) => $q->where('is_active', $filters['is_active']))
             ->when($filters['address_city'] ?? null, fn ($q, $v) => $q->where('address_city', 'like', "%{$v}%"))
             ->when($filters['address_province'] ?? null, fn ($q, $v) => $q->where('address_province', 'like', "%{$v}%"))
-            ->orderBy('name')
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->orderBy('name')
+            )
             ->paginate(15);
     }
 

@@ -21,6 +21,8 @@ final class ListSupplierRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
             'address_city' => ['sometimes', 'nullable', 'string', 'max:255'],
             'address_province' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,name,tin_number,category_id,contact_person,email,phone,address_city,address_province,on_time_delivery_rate,defect_rate,is_active,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

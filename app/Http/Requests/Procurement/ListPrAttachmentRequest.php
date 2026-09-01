@@ -21,6 +21,8 @@ final class ListPrAttachmentRequest extends FormRequest
             'type' => ['sometimes', 'nullable', 'string', 'in:app_ppmp,signed_pr,rfq,bac_resolution,noa,other'],
             'date_from' => ['sometimes', 'nullable', 'date'],
             'date_to' => ['sometimes', 'nullable', 'date', 'after_or_equal:date_from'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,purchase_request_id,uploader_id,type,file_name,file_size,mime_type,uploaded_at,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

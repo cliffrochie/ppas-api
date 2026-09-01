@@ -52,6 +52,13 @@ final class PurchaseRequestService
         'pr_number',
     ];
 
+    /** Columns a client may sort the list endpoint by. */
+    private const ALLOWED_SORTS = [
+        'id', 'rf_number', 'pr_number', 'requester_id', 'requesting_office_id', 'category_id',
+        'purpose', 'status', 'alobs_number', 'total_amount', 'requires_philgeps', 'submitted_at',
+        'created_at', 'updated_at',
+    ];
+
     public function __construct(
         private readonly Request $request,
         private readonly PrStatusHistoryService $prStatusHistoryService,
@@ -95,8 +102,10 @@ final class PurchaseRequestService
 
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
-        $query = PurchaseRequest::with(['requester', 'requestingOffice', 'category'])
-            ->latest();
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $query = PurchaseRequest::with(['requester', 'requestingOffice', 'category']);
 
         if ($user->role?->name === 'requester') {
             // Requesters see only their own PRs (including drafts).
@@ -119,7 +128,12 @@ final class PurchaseRequestService
             ->when($filters['requesting_office_id'] ?? null, fn ($q, $v) => $q->where('requesting_office_id', $v))
             ->when(array_key_exists('requires_philgeps', $filters), fn ($q) => $q->where('requires_philgeps', $filters['requires_philgeps']))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('submitted_at', '>=', $v))
-            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('submitted_at', '<=', $v));
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('submitted_at', '<=', $v))
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            );
 
         return $query->paginate(15);
     }

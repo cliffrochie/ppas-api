@@ -10,12 +10,23 @@ use Illuminate\Support\Facades\DB;
 
 final class CategoryService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'name', 'code', 'description', 'is_active', 'created_at', 'updated_at',
+    ];
+
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return Category::query()
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('name', 'like', "%{$v}%"))
             ->when(array_key_exists('is_active', $filters), fn ($q) => $q->where('is_active', $filters['is_active']))
-            ->orderBy('name')
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->orderBy('name')
+            )
             ->paginate(15);
     }
 

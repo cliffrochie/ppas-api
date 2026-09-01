@@ -23,6 +23,8 @@ final class ListPurchaseRequestRequest extends FormRequest
             'requires_philgeps' => ['sometimes', 'boolean'],
             'date_from' => ['sometimes', 'nullable', 'date'],
             'date_to' => ['sometimes', 'nullable', 'date', 'after_or_equal:date_from'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,rf_number,pr_number,requester_id,requesting_office_id,category_id,purpose,status,alobs_number,total_amount,requires_philgeps,submitted_at,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

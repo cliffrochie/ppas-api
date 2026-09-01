@@ -10,12 +10,23 @@ use Illuminate\Support\Facades\DB;
 
 final class RfqItemService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'rfq_id', 'pr_item_id', 'item_description', 'quantity', 'unit_of_measure', 'created_at', 'updated_at',
+    ];
+
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return RfqItem::query()
             ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
             ->when($filters['pr_item_id'] ?? null, fn ($q, $v) => $q->where('pr_item_id', $v))
-            ->latest()
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            )
             ->paginate(15);
     }
 

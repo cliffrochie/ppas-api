@@ -23,6 +23,8 @@ final class ListPurchaseOrderRequest extends FormRequest
             'purchase_request_id' => ['sometimes', 'nullable', 'integer', 'exists:purchase_requests,id'],
             'date_from' => ['sometimes', 'nullable', 'date'],
             'date_to' => ['sometimes', 'nullable', 'date', 'after_or_equal:date_from'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,po_number,purchase_request_id,prepared_by_id,supplier_id,supplier_name,delivery_date,total_amount,status,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

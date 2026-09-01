@@ -10,13 +10,24 @@ use Illuminate\Support\Facades\DB;
 
 final class CanvassResponseService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'rfq_id', 'rfq_item_id', 'supplier_name', 'unit_price', 'total_price', 'created_at', 'updated_at',
+    ];
+
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return CanvassResponse::query()
             ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
             ->when($filters['rfq_item_id'] ?? null, fn ($q, $v) => $q->where('rfq_item_id', $v))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('supplier_name', 'like', "%{$v}%"))
-            ->latest()
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            )
             ->paginate(15);
     }
 

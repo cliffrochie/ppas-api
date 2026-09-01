@@ -10,15 +10,26 @@ use Illuminate\Support\Facades\DB;
 
 final class PurchaseRequestItemService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'purchase_request_id', 'item_description', 'quantity', 'unit_of_measure', 'unit_cost', 'total_cost', 'created_at', 'updated_at',
+    ];
+
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return PurchaseRequestItem::query()
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
                 fn ($q) => $q->where('item_description', 'like', "%{$v}%")
                     ->orWhere('unit_of_measure', 'like', "%{$v}%")
             ))
-            ->latest()
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            )
             ->paginate(15);
     }
 

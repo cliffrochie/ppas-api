@@ -9,8 +9,15 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 final class PrStatusHistoryService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'purchase_request_id', 'actor_id', 'from_status', 'to_status', 'alobs_number', 'acted_at', 'created_at', 'updated_at',
+    ];
+
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return PrStatusHistory::with(['actor', 'purchaseRequest'])
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
             ->when($filters['actor_id'] ?? null, fn ($q, $v) => $q->where('actor_id', $v))
@@ -18,7 +25,11 @@ final class PrStatusHistoryService
             ->when($filters['to_status'] ?? null, fn ($q, $v) => $q->where('to_status', $v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('acted_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('acted_at', '<=', $v))
-            ->latest()
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            )
             ->paginate(15);
     }
 

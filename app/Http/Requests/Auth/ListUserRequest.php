@@ -20,6 +20,8 @@ final class ListUserRequest extends FormRequest
             'role_id' => ['sometimes', 'nullable', 'integer', 'exists:roles,id'],
             'office_id' => ['sometimes', 'nullable', 'integer', 'exists:offices,id'],
             'is_active' => ['sometimes', 'boolean'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,first_name,middle_name,last_name,email,is_active,role_id,office_id,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }
