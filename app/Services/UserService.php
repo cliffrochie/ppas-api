@@ -20,11 +20,7 @@ final class UserService
         $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 
         return User::with(['role', 'office'])
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
-                fn ($q) => $q->where('first_name', 'like', "%{$v}%")
-                    ->orWhere('last_name', 'like', "%{$v}%")
-                    ->orWhere('email', 'like', "%{$v}%")
-            ))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['role_id'] ?? null, fn ($q, $v) => $q->where('role_id', $v))
             ->when($filters['office_id'] ?? null, fn ($q, $v) => $q->where('office_id', $v))
             ->when(array_key_exists('is_active', $filters), fn ($q) => $q->where('is_active', $filters['is_active']))

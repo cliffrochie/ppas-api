@@ -21,10 +21,7 @@ final class PurchaseRequestItemService
 
         return PurchaseRequestItem::query()
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
-                fn ($q) => $q->where('item_description', 'like', "%{$v}%")
-                    ->orWhere('unit_of_measure', 'like', "%{$v}%")
-            ))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when(
                 $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
                 fn ($q) => $q->orderBy($sortBy, $sortOrder),

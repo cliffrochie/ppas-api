@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class PurchaseRequest extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'requester_id',
         'requesting_office_id',
@@ -23,6 +26,9 @@ class PurchaseRequest extends Model
         'submitted_at',
         'requires_philgeps',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['purpose', 'pr_number', 'rf_number', 'alobs_number'];
 
     /**
      * Automatically compute `requires_philgeps` before every save.

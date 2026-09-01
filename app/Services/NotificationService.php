@@ -25,6 +25,7 @@ final class NotificationService
             ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
             ->when(array_key_exists('is_read', $filters), fn ($q) => $q->where('is_read', $filters['is_read']))
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when(
                 $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
                 fn ($q) => $q->orderBy($sortBy, $sortOrder),

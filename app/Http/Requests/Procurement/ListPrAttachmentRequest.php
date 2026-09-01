@@ -16,6 +16,7 @@ final class ListPrAttachmentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'purchase_request_id' => ['sometimes', 'nullable', 'integer', 'exists:purchase_requests,id'],
             'uploader_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'type' => ['sometimes', 'nullable', 'string', 'in:app_ppmp,signed_pr,rfq,bac_resolution,noa,other'],

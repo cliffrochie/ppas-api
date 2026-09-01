@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class BacResolution extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'resolution_number',
         'abstract_of_quotation_id',
@@ -17,6 +20,9 @@ class BacResolution extends Model
         'file_path',
         'issued_at',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['resolution_number'];
 
     public function abstractOfQuotation(): BelongsTo
     {

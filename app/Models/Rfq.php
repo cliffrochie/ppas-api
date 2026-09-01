@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Rfq extends Model
 {
+    use Searchable;
+
     protected $table = 'rfqs';
 
     protected $fillable = [
@@ -21,6 +24,9 @@ class Rfq extends Model
         'status',
         'file_path',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['rfq_number'];
 
     public function purchaseRequest(): BelongsTo
     {

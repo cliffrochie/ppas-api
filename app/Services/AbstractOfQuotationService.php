@@ -27,7 +27,7 @@ final class AbstractOfQuotationService
             ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
             ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('recommended_supplier', 'like', "%{$v}%"))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when(
                 $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
                 fn ($q) => $q->orderBy($sortBy, $sortOrder),

@@ -20,9 +20,7 @@ final class OfficeService
         $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 
         return Office::query()
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
-                fn ($q) => $q->where('name', 'like', "%{$v}%")->orWhere('code', 'like', "%{$v}%")
-            ))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when(
                 $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
                 fn ($q) => $q->orderBy($sortBy, $sortOrder),

@@ -25,10 +25,7 @@ final class NoticeOfAwardService
 
         return NoticeOfAward::with(['bacResolution'])
             ->when($filters['bac_resolution_id'] ?? null, fn ($q, $v) => $q->where('bac_resolution_id', $v))
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
-                fn ($q) => $q->where('awarded_supplier', 'like', "%{$v}%")
-                    ->orWhere('noa_number', 'like', "%{$v}%")
-            ))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '<=', $v))
             ->when(

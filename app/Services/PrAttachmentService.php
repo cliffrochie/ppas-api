@@ -27,6 +27,7 @@ final class PrAttachmentService
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
             ->when($filters['uploader_id'] ?? null, fn ($q, $v) => $q->where('uploader_id', $v))
             ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('uploaded_at', '<=', $v))
             ->when(

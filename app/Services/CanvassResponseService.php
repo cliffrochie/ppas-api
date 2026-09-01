@@ -22,7 +22,7 @@ final class CanvassResponseService
         return CanvassResponse::query()
             ->when($filters['rfq_id'] ?? null, fn ($q, $v) => $q->where('rfq_id', $v))
             ->when($filters['rfq_item_id'] ?? null, fn ($q, $v) => $q->where('rfq_item_id', $v))
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('supplier_name', 'like', "%{$v}%"))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when(
                 $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
                 fn ($q) => $q->orderBy($sortBy, $sortOrder),

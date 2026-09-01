@@ -23,6 +23,7 @@ final class PrStatusHistoryService
             ->when($filters['actor_id'] ?? null, fn ($q, $v) => $q->where('actor_id', $v))
             ->when($filters['from_status'] ?? null, fn ($q, $v) => $q->where('from_status', $v))
             ->when($filters['to_status'] ?? null, fn ($q, $v) => $q->where('to_status', $v))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('acted_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('acted_at', '<=', $v))
             ->when(

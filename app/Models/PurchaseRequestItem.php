@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseRequestItem extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'purchase_request_id',
         'item_description',
@@ -19,6 +22,9 @@ class PurchaseRequestItem extends Model
         'unit_cost',
         'total_cost',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['item_description', 'unit_of_measure'];
 
     public function purchaseRequest(): BelongsTo
     {

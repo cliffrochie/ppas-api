@@ -128,6 +128,34 @@ class PrAttachmentTest extends TestCase
         $this->assertCount(1, $response->json('data'));
     }
 
+    public function test_index_filters_by_search_matches_file_name(): void
+    {
+        Storage::fake('private');
+
+        $officer = $this->procurementOfficer();
+        $pr = $this->createPurchaseRequest($officer);
+
+        $fileA = UploadedFile::fake()->create('quarterly-report.pdf', 40, 'application/pdf');
+        PrAttachment::create([
+            'purchase_request_id' => $pr->id,
+            'uploader_id' => $officer->id,
+            'type' => 'other',
+            'file_name' => 'quarterly-report.pdf',
+            'file_path' => $fileA->store("pr-attachments/{$pr->id}", 'private'),
+            'file_size' => 40,
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
+        ]);
+        $this->createAttachment($officer, $pr); // file_name = 'document.pdf'
+
+        $response = $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/v1/pr-attachments?search=quarterly');
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertStringContainsStringIgnoringCase('quarterly', $response->json('data.0.file_name'));
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/v1/pr-attachments — store (upload)
     // -------------------------------------------------------------------------

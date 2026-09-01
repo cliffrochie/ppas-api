@@ -23,10 +23,7 @@ final class PurchaseOrderService
         $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 
         return PurchaseOrder::with(['preparedBy', 'purchaseRequest'])
-            ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
-                fn ($q) => $q->where('po_number', 'like', "%{$v}%")
-                    ->orWhere('supplier_name', 'like', "%{$v}%")
-            ))
+            ->when($filters['search'] ?? null, fn ($q, $v) => $q->search($v))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['prepared_by_id'] ?? null, fn ($q, $v) => $q->where('prepared_by_id', $v))
             ->when($filters['supplier_id'] ?? null, fn ($q, $v) => $q->where('supplier_id', $v))

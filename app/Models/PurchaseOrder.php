@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseOrder extends Model
 {
+    use Searchable;
+
     protected $fillable = [
         'purchase_request_id',
         'prepared_by_id',
@@ -24,6 +27,9 @@ class PurchaseOrder extends Model
         'status',
         'signed_po_path',
     ];
+
+    /** @var list<string> */
+    protected array $searchable = ['po_number', 'supplier_name'];
 
     public function purchaseRequest(): BelongsTo
     {
