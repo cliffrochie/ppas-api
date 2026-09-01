@@ -22,6 +22,8 @@ final class ListRfqRequest extends FormRequest
             'purchase_request_id' => ['sometimes', 'nullable', 'integer', 'exists:purchase_requests,id'],
             'date_from' => ['sometimes', 'nullable', 'date'],
             'date_to' => ['sometimes', 'nullable', 'date', 'after_or_equal:date_from'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,rfq_number,purchase_request_id,prepared_by_id,deadline,status,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

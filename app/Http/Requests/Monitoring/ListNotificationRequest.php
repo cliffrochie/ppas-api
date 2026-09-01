@@ -19,6 +19,8 @@ final class ListNotificationRequest extends FormRequest
             'type' => ['sometimes', 'nullable', 'string', 'max:100'],
             'is_read' => ['sometimes', 'boolean'],
             'purchase_request_id' => ['sometimes', 'nullable', 'integer', 'exists:purchase_requests,id'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,purchase_request_id,type,title,is_read,read_at,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

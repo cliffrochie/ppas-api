@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Storage;
 
 final class RfqService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'rfq_number', 'purchase_request_id', 'prepared_by_id', 'deadline', 'status', 'created_at', 'updated_at',
+    ];
+
     public function __construct(
         private readonly Request $request,
         private readonly DocumentNumberService $numberGenerator,
@@ -19,6 +23,9 @@ final class RfqService
 
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return Rfq::with(['preparedBy', 'purchaseRequest'])
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('rfq_number', 'like', "%{$v}%"))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
@@ -26,7 +33,11 @@ final class RfqService
             ->when($filters['purchase_request_id'] ?? null, fn ($q, $v) => $q->where('purchase_request_id', $v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('deadline', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('deadline', '<=', $v))
-            ->latest()
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            )
             ->paginate(15);
     }
 

@@ -18,6 +18,8 @@ final class ListRfqItemRequest extends FormRequest
         return [
             'rfq_id' => ['sometimes', 'nullable', 'integer', 'exists:rfqs,id'],
             'pr_item_id' => ['sometimes', 'nullable', 'integer', 'exists:purchase_request_items,id'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,rfq_id,pr_item_id,item_description,quantity,unit_of_measure,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

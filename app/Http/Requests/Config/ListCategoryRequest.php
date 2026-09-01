@@ -18,6 +18,8 @@ final class ListCategoryRequest extends FormRequest
         return [
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,name,code,description,is_active,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

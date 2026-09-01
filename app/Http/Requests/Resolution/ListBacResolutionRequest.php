@@ -21,6 +21,8 @@ final class ListBacResolutionRequest extends FormRequest
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'date_from' => ['sometimes', 'nullable', 'date'],
             'date_to' => ['sometimes', 'nullable', 'date', 'after_or_equal:date_from'],
+            'sort_by' => ['sometimes', 'nullable', 'string', 'in:id,resolution_number,abstract_of_quotation_id,prepared_by_id,issued_at,created_at,updated_at'],
+            'sort_order' => ['sometimes', 'nullable', 'string', 'in:asc,desc,ASC,DESC'],
         ];
     }
 }

@@ -12,10 +12,17 @@ use Illuminate\Support\Facades\Storage;
 
 final class NoticeOfAwardService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'noa_number', 'bac_resolution_id', 'awarded_supplier', 'awarded_amount', 'issued_at', 'created_at', 'updated_at',
+    ];
+
     public function __construct(private readonly Request $request) {}
 
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return NoticeOfAward::with(['bacResolution'])
             ->when($filters['bac_resolution_id'] ?? null, fn ($q, $v) => $q->where('bac_resolution_id', $v))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
@@ -24,7 +31,11 @@ final class NoticeOfAwardService
             ))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('issued_at', '<=', $v))
-            ->latest()
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->latest()
+            )
             ->paginate(15);
     }
 

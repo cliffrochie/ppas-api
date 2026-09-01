@@ -10,13 +10,24 @@ use Illuminate\Support\Facades\DB;
 
 final class OfficeService
 {
+    private const ALLOWED_SORTS = [
+        'id', 'name', 'code', 'created_at', 'updated_at',
+    ];
+
     public function list(array $filters = []): LengthAwarePaginator
     {
+        $sortBy = $filters['sort_by'] ?? null;
+        $sortOrder = strtolower((string) ($filters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
         return Office::query()
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(
                 fn ($q) => $q->where('name', 'like', "%{$v}%")->orWhere('code', 'like', "%{$v}%")
             ))
-            ->orderBy('name')
+            ->when(
+                $sortBy && in_array($sortBy, self::ALLOWED_SORTS, true),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder),
+                fn ($q) => $q->orderBy('name')
+            )
             ->paginate(15);
     }
 
